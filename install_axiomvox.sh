@@ -5,6 +5,13 @@ REPO_URL="${AXIOMVOX_REPO_URL:-https://github.com/drgncabe/AxiomVox.git}"
 BRANCH="${AXIOMVOX_BRANCH:-main}"
 INSTALL_DIR="${AXIOMVOX_INSTALL_DIR:-/opt/axiomvox}"
 INSTALL_CHOICE=""
+MENU_TEXT="
+Choose install type:
+  1) Raspberry Pi appliance with Whisplay + PiSugar 3
+  2) Raspberry Pi appliance without vendor hardware drivers
+  3) Server/development checkout only
+  4) Update existing AxiomVox install
+  q) Quit"
 
 require_root() {
   if [[ "${EUID}" -ne 0 ]]; then
@@ -56,25 +63,33 @@ prepare_repo() {
 
 choose_install_type() {
   if [[ "${AXIOMVOX_INSTALL_MODE:-}" != "" ]]; then
-    INSTALL_CHOICE="${AXIOMVOX_INSTALL_MODE}"
+    INSTALL_CHOICE="$(normalize_choice "${AXIOMVOX_INSTALL_MODE}")"
     return
   fi
 
-  printf '%s\n' \
-"" \
-"Choose install type:" \
-"  1) Raspberry Pi appliance with Whisplay + PiSugar 3" \
-"  2) Raspberry Pi appliance without vendor hardware drivers" \
-"  3) Server/development checkout only" \
-"  4) Update existing AxiomVox install" \
-"  q) Quit"
+  if [[ -t 0 && -r /dev/tty && -w /dev/tty ]]; then
+    printf '\n%s\n' "${MENU_TEXT}" >/dev/tty
+    read -r -p "Selection [1]: " selection </dev/tty
+  else
+    printf '\n%s\n' "${MENU_TEXT}"
+    read -r -p "Selection [1]: " selection
+  fi
 
-  read -r -p "Selection [1]: " selection
-  INSTALL_CHOICE="${selection:-1}"
+  INSTALL_CHOICE="$(normalize_choice "${selection:-1}")"
+}
+
+normalize_choice() {
+  local choice="$1"
+  choice="${choice//$'\r'/}"
+  choice="${choice//$'\n'/}"
+  choice="${choice//$'\t'/}"
+  choice="${choice// /}"
+  printf '%s' "${choice}"
 }
 
 run_choice() {
   local choice="$1"
+  echo "Selected install type: ${choice}"
   case "${choice}" in
     1|device|appliance)
       bash "${INSTALL_DIR}/scripts/install.sh"
@@ -102,9 +117,9 @@ run_choice() {
 main() {
   require_root
   print_banner
+  choose_install_type
   install_bootstrap_packages
   prepare_repo
-  choose_install_type
   run_choice "${INSTALL_CHOICE}"
 }
 
