@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "axiomvox"
+version = "0.0.1"
+description = "M0 foundation for the AxiomVox appliance device"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "AGPL-3.0-only" }
+authors = [{ name = "AxiomVox contributors" }]
+dependencies = []
+
+[project.scripts]
+axiomvox-device = "device.axiomvox_device.main:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["device*", "shared*"]
