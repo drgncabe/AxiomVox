@@ -4,6 +4,7 @@ set -euo pipefail
 REPO_URL="${AXIOMVOX_REPO_URL:-https://github.com/drgncabe/AxiomVox.git}"
 BRANCH="${AXIOMVOX_BRANCH:-main}"
 INSTALL_DIR="${AXIOMVOX_INSTALL_DIR:-/opt/axiomvox}"
+INSTALL_CHOICE=""
 
 require_root() {
   if [[ "${EUID}" -ne 0 ]]; then
@@ -15,13 +16,12 @@ require_root() {
 print_banner() {
   local machine
   machine="$(uname -m 2>/dev/null || echo unknown)"
-  cat <<'EOF'
-AxiomVox Installer
-
-Fresh Raspberry Pi OS Lite -> AxiomVox M0 appliance.
-This installs system packages, Whisplay drivers, PiSugar 3 tools,
-the AxiomVox device app, and the systemd autostart service.
-EOF
+  printf '%s\n' \
+"AxiomVox Installer" \
+"" \
+"Fresh Raspberry Pi OS Lite -> AxiomVox M0 appliance." \
+"This installs system packages, Whisplay drivers, PiSugar 3 tools," \
+"the AxiomVox device app, and the systemd autostart service."
   echo
   echo "Detected architecture: ${machine}"
   case "${machine}" in
@@ -56,22 +56,21 @@ prepare_repo() {
 
 choose_install_type() {
   if [[ "${AXIOMVOX_INSTALL_MODE:-}" != "" ]]; then
-    echo "${AXIOMVOX_INSTALL_MODE}"
+    INSTALL_CHOICE="${AXIOMVOX_INSTALL_MODE}"
     return
   fi
 
-  cat <<'EOF'
-
-Choose install type:
-  1) Raspberry Pi appliance with Whisplay + PiSugar 3
-  2) Raspberry Pi appliance without vendor hardware drivers
-  3) Server/development checkout only
-  4) Update existing AxiomVox install
-  q) Quit
-EOF
+  printf '%s\n' \
+"" \
+"Choose install type:" \
+"  1) Raspberry Pi appliance with Whisplay + PiSugar 3" \
+"  2) Raspberry Pi appliance without vendor hardware drivers" \
+"  3) Server/development checkout only" \
+"  4) Update existing AxiomVox install" \
+"  q) Quit"
 
   read -r -p "Selection [1]: " selection
-  echo "${selection:-1}"
+  INSTALL_CHOICE="${selection:-1}"
 }
 
 run_choice() {
@@ -100,8 +99,15 @@ run_choice() {
   esac
 }
 
-require_root
-print_banner
-install_bootstrap_packages
-prepare_repo
-run_choice "$(choose_install_type)"
+main() {
+  require_root
+  print_banner
+  install_bootstrap_packages
+  prepare_repo
+  choose_install_type
+  run_choice "${INSTALL_CHOICE}"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi
