@@ -25,8 +25,9 @@ M0 uses conservative system probes:
 - I2C devices for Whisplay presence.
 - Framebuffer devices for LCD initialization.
 - ALSA capture listing for microphones.
-- Linux input metadata for Whisplay and PiSugar buttons.
-- PiSugar socket, Linux power supply entries, or `pisugar-server` for PiSugar.
+- Whisplay runtime/daemon availability or Linux input metadata for the Whisplay button.
+- PiSugar server socket, Linux power supply entries, or `pisugar-server` for PiSugar.
+- PiSugar button API responses for PiSugar button availability.
 - DRM connector status for HDMI.
 
 These probes are intentionally modular. Future milestones can replace them with

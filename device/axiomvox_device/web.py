@@ -101,7 +101,7 @@ def render_dashboard(state: AppState) -> str:
         else "Not readable"
     )
     diagnostics = "\n".join(
-        f"<li><strong>{item.name}</strong>: {'OK' if item.ok else 'Missing'}"
+        f"<li><strong>{item.name}</strong>: {'OK' if item.ok else 'Missing'} - "
         f"<span>{item.detail}</span></li>"
         for item in hardware.diagnostics
     )
