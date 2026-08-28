@@ -57,8 +57,10 @@ install_packages() {
     git \
     netcat-openbsd \
     python3 \
+    python3-libgpiod \
     python3-pil \
     python3-pip \
+    python3-spidev \
     python3-venv \
     alsa-utils \
     i2c-tools \
@@ -136,7 +138,7 @@ prepare_install_dir() {
 }
 
 install_python_app() {
-  sudo -u "${APP_USER}" python3 -m venv "${INSTALL_DIR}/.venv"
+  sudo -u "${APP_USER}" python3 -m venv --system-site-packages "${INSTALL_DIR}/.venv"
   sudo -u "${APP_USER}" "${INSTALL_DIR}/.venv/bin/python" -m pip install --upgrade pip
   sudo -u "${APP_USER}" "${INSTALL_DIR}/.venv/bin/python" -m pip install -e "${INSTALL_DIR}"
 }

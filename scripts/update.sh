@@ -36,11 +36,14 @@ update_checkout() {
 install_runtime_packages() {
   export DEBIAN_FRONTEND=noninteractive
   apt-get update
-  apt-get install -y --no-install-recommends python3-pil
+  apt-get install -y --no-install-recommends python3-libgpiod python3-pil python3-spidev
 }
 
 update_python_app() {
-  sudo -u "${APP_USER}" python3 -m venv "${INSTALL_DIR}/.venv"
+  if [[ -f "${INSTALL_DIR}/.venv/pyvenv.cfg" ]] && ! grep -q "include-system-site-packages = true" "${INSTALL_DIR}/.venv/pyvenv.cfg"; then
+    rm -rf "${INSTALL_DIR}/.venv"
+  fi
+  sudo -u "${APP_USER}" python3 -m venv --system-site-packages "${INSTALL_DIR}/.venv"
   sudo -u "${APP_USER}" "${INSTALL_DIR}/.venv/bin/python" -m pip install --upgrade pip
   sudo -u "${APP_USER}" "${INSTALL_DIR}/.venv/bin/python" -m pip install -e "${INSTALL_DIR}"
 }

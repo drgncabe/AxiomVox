@@ -47,6 +47,7 @@ The installer:
 - Installs the PiSugar 3 power manager/server tools.
 - Installs AxiomVox into `/opt/axiomvox`.
 - Creates a Python virtual environment.
+- Allows the Python virtual environment to use system hardware packages.
 - Installs the device app.
 - Installs the `axiomvox-device` command at `/usr/local/bin/axiomvox-device`.
 - Installs and starts the systemd service.

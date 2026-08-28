@@ -132,6 +132,8 @@ def _run_self_test(
     if lcd is not None:
         lcd_result = lcd.render(state)
         checks.append(("Whisplay LCD render", "updated" in lcd_result.lower()))
+    else:
+        lcd_result = "LCD self-test skipped"
 
     print(whisplay.render(state), file=sys.stdout)
     print("", file=sys.stdout)
@@ -140,6 +142,8 @@ def _run_self_test(
     print("M1 Self-Test", file=sys.stdout)
     for name, ok in checks:
         print(f"- {name}: {'PASS' if ok else 'FAIL'}", file=sys.stdout)
+    if lcd is not None:
+        print(f"- Whisplay LCD detail: {lcd_result}", file=sys.stdout)
 
     return 0 if all(ok for _, ok in checks) else 1
 

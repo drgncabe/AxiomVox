@@ -13,6 +13,10 @@ axiomvox-device --simulate-hardware --self-test
 The installer also leaves the virtual-environment command available directly at
 `/opt/axiomvox/.venv/bin/axiomvox-device`.
 
+The virtual environment is created with system site packages enabled so the app
+can use Debian/Raspberry Pi hardware modules such as `spidev`, `gpiod`, and
+`PIL`.
+
 ## Run On Device
 
 ```bash
