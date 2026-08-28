@@ -31,6 +31,16 @@ axiomvox-device --self-test --no-lcd
 On hardware with the Whisplay runtime and `python3-pil` installed, omit
 `--no-lcd` to include LCD rendering in the self-test.
 
+If the LCD-inclusive self-test reports `Device or resource busy`, the running
+`axiomvox.service` probably already owns the Whisplay SPI/GPIO device. Stop the
+service before running that test:
+
+```bash
+sudo systemctl stop axiomvox.service
+axiomvox-device --self-test
+sudo systemctl start axiomvox.service
+```
+
 ## Notes
 
 PiSugar Server is still useful when it runs cleanly, but AxiomVox keeps direct

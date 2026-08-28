@@ -131,7 +131,7 @@ def _run_self_test(
     ]
     if lcd is not None:
         lcd_result = lcd.render(state)
-        checks.append(("Whisplay LCD render", "updated" in lcd_result.lower()))
+        checks.append(("Whisplay LCD render", _lcd_render_ok(lcd_result)))
     else:
         lcd_result = "LCD self-test skipped"
 
@@ -144,8 +144,22 @@ def _run_self_test(
         print(f"- {name}: {'PASS' if ok else 'FAIL'}", file=sys.stdout)
     if lcd is not None:
         print(f"- Whisplay LCD detail: {lcd_result}", file=sys.stdout)
+        if _lcd_resource_busy(lcd_result):
+            print(
+                "- Whisplay LCD hint: stop axiomvox.service before running an LCD-inclusive self-test",
+                file=sys.stdout,
+            )
 
     return 0 if all(ok for _, ok in checks) else 1
+
+
+def _lcd_render_ok(result: str) -> bool:
+    return "updated" in result.lower()
+
+
+def _lcd_resource_busy(result: str) -> bool:
+    lowered = result.lower()
+    return "device or resource busy" in lowered or "errno 16" in lowered
 
 
 if __name__ == "__main__":
