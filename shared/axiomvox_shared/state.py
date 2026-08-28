@@ -30,6 +30,17 @@ class HardwareStatus:
 
 
 @dataclass(slots=True)
+class SessionSummary:
+    id: str
+    status: str
+    started_at: str
+    ended_at: str | None = None
+    audio_path: str | None = None
+    metadata_path: str | None = None
+    bookmarks: list[str] = field(default_factory=list)
+
+
+@dataclass(slots=True)
 class AppState:
     mode: str = "READY"
     started_at: str = field(default_factory=utc_now_iso)
@@ -43,6 +54,8 @@ class AppState:
     menu_index: int = 0
     status_message: str = "Ready"
     last_button_event: str = ""
+    current_session: SessionSummary | None = None
+    recent_sessions: list[SessionSummary] = field(default_factory=list)
     shutdown_requested: bool = False
     shutdown_message: str = ""
 

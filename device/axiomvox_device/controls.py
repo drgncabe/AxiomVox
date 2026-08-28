@@ -3,9 +3,13 @@ from __future__ import annotations
 from shared.axiomvox_shared import AppState
 
 from .events import ButtonEvent
+from .sessions import SessionManager
 
 
 class ApplianceController:
+    def __init__(self, sessions: SessionManager | None = None) -> None:
+        self.sessions = sessions
+
     def handle_button(self, event: ButtonEvent, state: AppState) -> None:
         state.last_button_event = event.label()
 
@@ -18,12 +22,23 @@ class ApplianceController:
 
     def _handle_whisplay(self, event: ButtonEvent, state: AppState) -> None:
         if event.gesture == "short":
-            state.status_message = "Recording control reserved: start/bookmark"
+            if self.sessions is not None:
+                self.sessions.bookmark(state)
+            else:
+                state.status_message = "Recording control reserved: start/bookmark"
         elif event.gesture == "long":
-            state.status_message = "Recording control reserved: stop"
+            if self.sessions is not None:
+                self.sessions.stop(state)
+            else:
+                state.status_message = "Recording control reserved: stop"
+        elif event.gesture == "double":
+            if self.sessions is not None:
+                self.sessions.bookmark(state)
+            else:
+                state.status_message = "Recording control reserved: bookmark"
         else:
             state.status_message = f"Recording control reserved: {event.gesture}"
-        state.active_screen = "ready"
+        state.active_screen = "recording" if state.current_session is not None else "ready"
 
     def _handle_pisugar(self, event: ButtonEvent, state: AppState) -> None:
         if event.gesture == "short":

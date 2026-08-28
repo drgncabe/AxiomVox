@@ -15,6 +15,7 @@ from .controls import ApplianceController
 from .display import HdmiRenderer, WhisplayRenderer
 from .hardware import HardwareProbe
 from .lcd import WhisplayLcdDriver
+from .sessions import SessionManager
 from .web import StatusServer
 
 
@@ -28,6 +29,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--self-test", action="store_true", help="Run M1 diagnostics and exit")
     parser.add_argument("--no-lcd", action="store_true", help="Do not attempt Whisplay LCD hardware updates")
     parser.add_argument("--status-file", type=Path)
+    parser.add_argument("--session-dir", type=Path, default=Path("/var/lib/axiomvox/sessions"))
+    parser.add_argument("--metadata-only", action="store_true", help="Do not launch ALSA capture")
     return parser
 
 
@@ -39,10 +42,13 @@ def main(argv: list[str] | None = None) -> int:
         allow_shutdown=args.allow_shutdown,
         simulate_hardware=args.simulate_hardware,
         status_file=args.status_file,
+        session_dir=args.session_dir,
+        capture_enabled=not args.metadata_only,
     )
     state = AppState()
     probe = HardwareProbe(simulate=config.simulate_hardware)
-    controller = ApplianceController()
+    sessions = SessionManager(config)
+    controller = ApplianceController(sessions)
     pollers = [WhisplayButtonPoller(probe), PiSugarButtonPoller(probe)]
     whisplay = WhisplayRenderer()
     hdmi = HdmiRenderer()
@@ -58,7 +64,7 @@ def main(argv: list[str] | None = None) -> int:
         _publish_status(state, whisplay, hdmi, lcd, config.status_file)
         return 0
 
-    server = StatusServer(state, config)
+    server = StatusServer(state, config, controller)
     stop = False
 
     def request_stop(signum: int, frame: object) -> None:
@@ -91,6 +97,8 @@ def main(argv: list[str] | None = None) -> int:
 
             time.sleep(0.2)
     finally:
+        if state.current_session is not None:
+            sessions.stop(state)
         server.stop()
 
     return 0

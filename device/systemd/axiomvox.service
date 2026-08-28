@@ -6,7 +6,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=/opt/axiomvox
-ExecStart=/opt/axiomvox/.venv/bin/axiomvox-device --host 0.0.0.0 --port 8080 --allow-shutdown --status-file /run/axiomvox/status.json
+ExecStart=/opt/axiomvox/.venv/bin/axiomvox-device --host 0.0.0.0 --port 8080 --allow-shutdown --status-file /run/axiomvox/status.json --session-dir /var/lib/axiomvox/sessions
 Restart=on-failure
 RestartSec=5
 User=pi

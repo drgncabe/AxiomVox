@@ -15,10 +15,16 @@ from .shutdown import ShutdownController
 
 
 class StatusServer:
-    def __init__(self, state: AppState, config: DeviceConfig) -> None:
+    def __init__(
+        self,
+        state: AppState,
+        config: DeviceConfig,
+        controller: ApplianceController | None = None,
+    ) -> None:
         self.state = state
         self.config = config
         self.shutdown = ShutdownController(config)
+        self.controller = controller or ApplianceController()
         self.httpd = ThreadingHTTPServer((config.host, config.port), self._handler())
         self.thread = Thread(target=self.httpd.serve_forever, daemon=True)
 
@@ -36,7 +42,7 @@ class StatusServer:
     def _handler(self) -> type[BaseHTTPRequestHandler]:
         state = self.state
         shutdown = self.shutdown
-        controller = ApplianceController()
+        controller = self.controller
 
         class Handler(BaseHTTPRequestHandler):
             def do_GET(self) -> None:
@@ -48,6 +54,14 @@ class StatusServer:
                     return
                 if self.path == "/api/diagnostics":
                     self._send_json({"diagnostics": state.to_dict()["hardware"]["diagnostics"]})
+                    return
+                if self.path == "/api/sessions":
+                    self._send_json(
+                        {
+                            "current_session": state.to_dict()["current_session"],
+                            "recent_sessions": state.to_dict()["recent_sessions"],
+                        }
+                    )
                     return
                 if self.path == "/" or self.path.startswith("/?"):
                     self._send_text(render_dashboard(state), HTTPStatus.OK, "text/html; charset=utf-8")
@@ -64,11 +78,14 @@ class StatusServer:
                     state.touch()
                     self._send_json({"ok": True, "message": state.shutdown_message})
                     return
-                if self.path == "/api/button":
+                if self.path in {"/api/button", "/button"}:
                     source = fields.get("source", [""])[0]
                     gesture = fields.get("gesture", [""])[0]
                     if source in {"whisplay", "pisugar"} and gesture in {"short", "double", "long", "very_long"}:
                         controller.handle_button(ButtonEvent(source, gesture), state)
+                        if self.path == "/button":
+                            self._send_text(render_dashboard(state), HTTPStatus.OK, "text/html; charset=utf-8")
+                            return
                         self._send_json({"ok": True, "state": state.to_dict()})
                         return
                     self._send_json({"ok": False, "message": "invalid button event"}, HTTPStatus.BAD_REQUEST)
@@ -120,6 +137,20 @@ def render_dashboard(state: AppState) -> str:
         f"<span class=\"detail\">{item.detail}</span></li>"
         for item in hardware.diagnostics
     )
+    current_session = state.current_session
+    if current_session is None:
+        session_detail = "<p>No active recording.</p>"
+    else:
+        session_detail = (
+            f"<p><strong>{current_session.id}</strong> started at {current_session.started_at}.</p>"
+            f"<p>Bookmarks: {len(current_session.bookmarks)}</p>"
+        )
+    recent_sessions = "\n".join(
+        f"<li><strong>{session.id}</strong><span class=\"detail\">{session.status}</span></li>"
+        for session in state.recent_sessions
+    )
+    if not recent_sessions:
+        recent_sessions = "<li>No saved sessions yet.</li>"
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -135,10 +166,12 @@ def render_dashboard(state: AppState) -> str:
     .metric {{ background: #eef4f8; border-radius: 6px; padding: .75rem; }}
     .label {{ color: #536471; font-size: .85rem; }}
     .value {{ font-size: 1.4rem; font-weight: 700; }}
+    .actions {{ display: flex; flex-wrap: wrap; gap: .5rem; }}
     li {{ margin: .5rem 0; }}
     .detail {{ display: block; color: #536471; font-size: .9rem; }}
     .detail::before {{ content: "Detail: "; font-weight: 700; }}
-    button {{ border: 0; border-radius: 6px; background: #a83232; color: white; padding: .7rem 1rem; font-weight: 700; }}
+    button {{ border: 0; border-radius: 6px; background: #155c85; color: white; padding: .7rem 1rem; font-weight: 700; }}
+    .danger {{ background: #a83232; }}
     a {{ color: #155c85; }}
   </style>
 </head>
@@ -156,6 +189,17 @@ def render_dashboard(state: AppState) -> str:
     <h2>Controls</h2>
     <p>{state.status_message}</p>
     <p>Last button: {state.last_button_event or 'none'}</p>
+    <div class="actions">
+      <form method="post" action="/button"><input type="hidden" name="source" value="whisplay"><input type="hidden" name="gesture" value="short"><button type="submit">Whisplay Short</button></form>
+      <form method="post" action="/button"><input type="hidden" name="source" value="whisplay"><input type="hidden" name="gesture" value="long"><button type="submit">Whisplay Long</button></form>
+      <form method="post" action="/button"><input type="hidden" name="source" value="pisugar"><input type="hidden" name="gesture" value="short"><button type="submit">PiSugar Short</button></form>
+      <form method="post" action="/button"><input type="hidden" name="source" value="pisugar"><input type="hidden" name="gesture" value="long"><button type="submit">PiSugar Long</button></form>
+    </div>
+  </section>
+  <section class="panel">
+    <h2>Sessions</h2>
+    {session_detail}
+    <ul>{recent_sessions}</ul>
   </section>
   <section class="panel">
     <h2>M0 Diagnostics</h2>
@@ -168,7 +212,7 @@ def render_dashboard(state: AppState) -> str:
   <section class="panel">
     <h2>Power</h2>
     <p>{state.shutdown_message}</p>
-    <form method="post" action="/shutdown"><button type="submit">Shutdown</button></form>
+    <form method="post" action="/shutdown"><button class="danger" type="submit">Shutdown</button></form>
   </section>
 </main>
 </body>

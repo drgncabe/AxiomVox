@@ -33,6 +33,15 @@ class WhisplayRenderer:
                     "Web also available",
                 ]
             )
+        if state.current_session is not None:
+            return "\n".join(
+                [
+                    "AxiomVox REC",
+                    state.current_session.id,
+                    f"BAT {battery}  BK {len(state.current_session.bookmarks)}",
+                    "Long: stop",
+                ]
+            )
         return "\n".join(
             [
                 "AxiomVox READY",
@@ -70,6 +79,8 @@ class HdmiRenderer:
             f"Battery: {battery}",
             f"Message: {state.status_message}",
             f"Last button: {state.last_button_event or 'none'}",
+            f"Current session: {state.current_session.id if state.current_session else 'none'}",
+            f"Recent sessions: {len(state.recent_sessions)}",
             "",
             "M0 Checklist",
         ]

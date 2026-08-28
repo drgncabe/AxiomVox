@@ -8,6 +8,7 @@ REPO_URL="${AXIOMVOX_REPO_URL:-https://github.com/drgncabe/AxiomVox.git}"
 SERVICE_NAME="${AXIOMVOX_SERVICE_NAME:-axiomvox.service}"
 WEB_PORT="${AXIOMVOX_WEB_PORT:-8080}"
 STATUS_FILE="${AXIOMVOX_STATUS_FILE:-/run/axiomvox/status.json}"
+SESSION_DIR="${AXIOMVOX_SESSION_DIR:-/var/lib/axiomvox/sessions}"
 INSTALL_HARDWARE="${AXIOMVOX_INSTALL_HARDWARE:-1}"
 INSTALL_WHISPLAY_DRIVER="${AXIOMVOX_INSTALL_WHISPLAY_DRIVER:-1}"
 INSTALL_WHISPLAY_DAEMON="${AXIOMVOX_INSTALL_WHISPLAY_DAEMON:-0}"
@@ -154,11 +155,13 @@ install_service() {
     -e "s|ExecStart=/opt/axiomvox/.venv/bin/axiomvox-device|ExecStart=${INSTALL_DIR}/.venv/bin/axiomvox-device|g" \
     -e "s|--port 8080|--port ${WEB_PORT}|g" \
     -e "s|--status-file /run/axiomvox/status.json|--status-file ${STATUS_FILE}|g" \
+    -e "s|--session-dir /var/lib/axiomvox/sessions|--session-dir ${SESSION_DIR}|g" \
     -e "s|User=pi|User=${APP_USER}|g" \
     -e "s|Group=pi|Group=${APP_GROUP}|g" \
     "/etc/systemd/system/${SERVICE_NAME}"
 
   install -d -m 0755 -o "${APP_USER}" -g "${APP_GROUP}" "$(dirname "${STATUS_FILE}")"
+  install -d -m 0755 -o "${APP_USER}" -g "${APP_GROUP}" "${SESSION_DIR}"
   systemctl daemon-reload
   systemctl enable "${SERVICE_NAME}"
   systemctl restart "${SERVICE_NAME}"

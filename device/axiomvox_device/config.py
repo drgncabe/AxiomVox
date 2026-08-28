@@ -12,3 +12,5 @@ class DeviceConfig:
     allow_shutdown: bool = False
     simulate_hardware: bool = False
     status_file: Path | None = None
+    session_dir: Path = Path("/var/lib/axiomvox/sessions")
+    capture_enabled: bool = True
