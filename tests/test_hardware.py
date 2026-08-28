@@ -44,3 +44,27 @@ def test_pisugar_probe_reports_active_service_without_api() -> None:
 
     assert result.ok is True
     assert "API did not respond" in result.detail
+
+
+def test_pisugar_battery_falls_back_to_i2c_register() -> None:
+    probe = HardwareProbe()
+    probe._query_pisugar = lambda command: None
+    probe._read_i2c_byte = lambda address, register: 62 if (address, register) == (0x57, 0x2A) else None
+
+    assert probe._read_battery_percentage() == 62
+
+
+def test_pisugar_button_detects_readable_i2c_register() -> None:
+    probe = HardwareProbe()
+    probe._query_pisugar = lambda command: None
+    probe._probe_input = lambda keyword: type("Result", (), {"ok": False, "detail": "missing"})()
+    probe._systemctl_is_active = lambda service: type("Result", (), {
+        "ok": False,
+        "detail": "pisugar-server status: failed",
+    })()
+    probe._read_i2c_byte = lambda address, register: 0 if (address, register) == (0x57, 0x08) else None
+
+    result = probe._probe_pisugar_button()
+
+    assert result.ok is True
+    assert "0x57/0x08" in result.detail

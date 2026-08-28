@@ -121,6 +121,10 @@ class HardwareProbe:
         if model:
             return ProbeResult(True, f"PiSugar API responded: {self._parse_pisugar_value(model)}")
 
+        i2c = self._read_i2c_byte(0x57, 0x2A)
+        if i2c is not None:
+            return ProbeResult(True, "PiSugar I2C battery register responded at 0x57")
+
         candidates = [
             Path("/sys/class/power_supply/pisugar-battery"),
             Path("/sys/class/power_supply/pisugar"),
@@ -158,6 +162,13 @@ class HardwareProbe:
         service = self._systemctl_is_active("pisugar-server")
         if service.ok:
             return ProbeResult(False, "pisugar-server is active but button API did not respond")
+
+        button_register = self._read_i2c_byte(0x57, 0x08)
+        if button_register is not None:
+            return ProbeResult(
+                True,
+                f"PiSugar I2C custom button register readable at 0x57/0x08: 0x{button_register:02x}",
+            )
         return ProbeResult(False, f"PiSugar button API did not respond; {service.detail}")
 
     def _read_battery_percentage(self) -> int | None:
@@ -168,6 +179,10 @@ class HardwareProbe:
                 return max(0, min(100, round(float(value))))
             except ValueError:
                 pass
+
+        i2c_battery = self._read_i2c_byte(0x57, 0x2A)
+        if i2c_battery is not None:
+            return max(0, min(100, i2c_battery))
 
         power_supply = Path("/sys/class/power_supply")
         if not power_supply.exists():
@@ -230,6 +245,25 @@ class HardwareProbe:
         )
         status = (result.stdout or result.stderr).strip()
         return ProbeResult(result.returncode == 0, f"{service} status: {status or 'unknown'}")
+
+    def _read_i2c_byte(self, address: int, register: int, bus: int = 1) -> int | None:
+        i2cget = shutil.which("i2cget")
+        if not i2cget:
+            return None
+        result = subprocess.run(
+            [i2cget, "-y", str(bus), hex(address), hex(register)],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=3,
+        )
+        if result.returncode != 0:
+            return None
+        value = result.stdout.strip().splitlines()[0] if result.stdout.strip() else ""
+        try:
+            return int(value, 0)
+        except ValueError:
+            return None
 
     def _parse_pisugar_value(self, response: str) -> str:
         if ":" in response:
