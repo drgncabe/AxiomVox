@@ -17,4 +17,4 @@ def test_dashboard_documents_future_sections_without_implementing_them() -> None
     assert "Sessions" in html
     assert "Development" in html
     assert "55%" in html
-    assert "OK - <span>available</span>" in html
+    assert "<span class=\"detail\">available</span>" in html

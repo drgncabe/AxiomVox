@@ -117,16 +117,24 @@ class HardwareProbe:
         return ProbeResult(False, "No Whisplay runtime, daemon, or GPIO/button input found")
 
     def _probe_pisugar(self) -> ProbeResult:
-        if self._query_pisugar("get model"):
-            return ProbeResult(True, "PiSugar server socket responded")
+        model = self._query_pisugar("get model")
+        if model:
+            return ProbeResult(True, f"PiSugar API responded: {self._parse_pisugar_value(model)}")
+
         candidates = [
             Path("/sys/class/power_supply/pisugar-battery"),
             Path("/sys/class/power_supply/pisugar"),
         ]
         if any(path.exists() for path in candidates):
             return ProbeResult(True, "PiSugar power supply entry found")
+
+        service = self._systemctl_is_active("pisugar-server")
+        if service.ok:
+            return ProbeResult(True, "pisugar-server service is active but API did not respond")
+
         if shutil.which("pisugar-server"):
-            return ProbeResult(True, "pisugar-server command found")
+            return ProbeResult(True, "pisugar-server command found but service/API did not respond")
+
         return ProbeResult(False, "PiSugar power interface not found")
 
     def _probe_pisugar_button(self) -> ProbeResult:
@@ -139,10 +147,18 @@ class HardwareProbe:
         if responses:
             return ProbeResult(True, "PiSugar button API responded: " + ", ".join(responses))
 
+        response = self._query_pisugar("get button_enable")
+        if response:
+            return ProbeResult(True, f"PiSugar button API responded: {self._parse_pisugar_value(response)}")
+
         generic_input = self._probe_input("pisugar")
         if generic_input.ok:
             return generic_input
-        return ProbeResult(False, "PiSugar button API did not respond")
+
+        service = self._systemctl_is_active("pisugar-server")
+        if service.ok:
+            return ProbeResult(False, "pisugar-server is active but button API did not respond")
+        return ProbeResult(False, f"PiSugar button API did not respond; {service.detail}")
 
     def _read_battery_percentage(self) -> int | None:
         pisugar_battery = self._query_pisugar("get battery")
@@ -172,6 +188,9 @@ class HardwareProbe:
             response = self._query_unix_socket(socket_path, command)
             if response:
                 return response
+        response = self._query_tcp_socket("127.0.0.1", 8423, command)
+        if response:
+            return response
         return None
 
     def _query_whisplay_daemon(self, command: str) -> str | None:
@@ -188,6 +207,29 @@ class HardwareProbe:
                 return client.recv(256).decode("utf-8", errors="ignore").strip()
         except OSError:
             return None
+
+    def _query_tcp_socket(self, host: str, port: int, command: str) -> str | None:
+        try:
+            with socket.create_connection((host, port), timeout=1) as client:
+                client.settimeout(1)
+                client.sendall(f"{command}\n".encode("utf-8"))
+                return client.recv(256).decode("utf-8", errors="ignore").strip()
+        except OSError:
+            return None
+
+    def _systemctl_is_active(self, service: str) -> ProbeResult:
+        systemctl = shutil.which("systemctl")
+        if not systemctl:
+            return ProbeResult(False, "systemctl is not available")
+        result = subprocess.run(
+            [systemctl, "is-active", service],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=3,
+        )
+        status = (result.stdout or result.stderr).strip()
+        return ProbeResult(result.returncode == 0, f"{service} status: {status or 'unknown'}")
 
     def _parse_pisugar_value(self, response: str) -> str:
         if ":" in response:

@@ -101,8 +101,8 @@ def render_dashboard(state: AppState) -> str:
         else "Not readable"
     )
     diagnostics = "\n".join(
-        f"<li><strong>{item.name}</strong>: {'OK' if item.ok else 'Missing'} - "
-        f"<span>{item.detail}</span></li>"
+        f"<li><strong>{item.name}</strong>: {'OK' if item.ok else 'Missing'}"
+        f"<span class=\"detail\">{item.detail}</span></li>"
         for item in hardware.diagnostics
     )
     return f"""<!doctype html>
@@ -121,7 +121,8 @@ def render_dashboard(state: AppState) -> str:
     .label {{ color: #536471; font-size: .85rem; }}
     .value {{ font-size: 1.4rem; font-weight: 700; }}
     li {{ margin: .5rem 0; }}
-    li span {{ display: block; color: #536471; font-size: .9rem; }}
+    .detail {{ display: block; color: #536471; font-size: .9rem; }}
+    .detail::before {{ content: "Detail: "; font-weight: 700; }}
     button {{ border: 0; border-radius: 6px; background: #a83232; color: white; padding: .7rem 1rem; font-weight: 700; }}
     a {{ color: #155c85; }}
   </style>
