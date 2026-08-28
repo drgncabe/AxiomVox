@@ -178,9 +178,9 @@ require_root
 detect_profile
 install_packages
 enable_pi_interfaces
-install_whisplay_driver
-install_pisugar_power_manager
 prepare_install_dir
 install_python_app
 install_service
+install_whisplay_driver
+install_pisugar_power_manager
 print_summary

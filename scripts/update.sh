@@ -9,6 +9,8 @@ BRANCH="${AXIOMVOX_BRANCH:-main}"
 UPDATE_HARDWARE="${AXIOMVOX_UPDATE_HARDWARE:-0}"
 VENDOR_DIR="${AXIOMVOX_VENDOR_DIR:-/opt/axiomvox-vendor}"
 PISUGAR_INSTALLER_URL="${AXIOMVOX_PISUGAR_INSTALLER_URL:-https://cdn.pisugar.com/release/pisugar-power-manager.sh}"
+WEB_PORT="${AXIOMVOX_WEB_PORT:-8080}"
+STATUS_FILE="${AXIOMVOX_STATUS_FILE:-/run/axiomvox/status.json}"
 
 require_root() {
   if [[ "${EUID}" -ne 0 ]]; then
@@ -35,6 +37,22 @@ update_python_app() {
   sudo -u "${APP_USER}" python3 -m venv "${INSTALL_DIR}/.venv"
   sudo -u "${APP_USER}" "${INSTALL_DIR}/.venv/bin/python" -m pip install --upgrade pip
   sudo -u "${APP_USER}" "${INSTALL_DIR}/.venv/bin/python" -m pip install -e "${INSTALL_DIR}"
+}
+
+install_service() {
+  cp "${INSTALL_DIR}/device/systemd/axiomvox.service" "/etc/systemd/system/${SERVICE_NAME}"
+  sed -i \
+    -e "s|WorkingDirectory=/opt/axiomvox|WorkingDirectory=${INSTALL_DIR}|g" \
+    -e "s|ExecStart=/opt/axiomvox/.venv/bin/axiomvox-device|ExecStart=${INSTALL_DIR}/.venv/bin/axiomvox-device|g" \
+    -e "s|--port 8080|--port ${WEB_PORT}|g" \
+    -e "s|--status-file /run/axiomvox/status.json|--status-file ${STATUS_FILE}|g" \
+    -e "s|User=pi|User=${APP_USER}|g" \
+    -e "s|Group=pi|Group=${APP_GROUP}|g" \
+    "/etc/systemd/system/${SERVICE_NAME}"
+
+  install -d -m 0755 -o "${APP_USER}" -g "${APP_GROUP}" "$(dirname "${STATUS_FILE}")"
+  systemctl daemon-reload
+  systemctl enable "${SERVICE_NAME}"
 }
 
 update_hardware_tools() {
@@ -77,5 +95,6 @@ require_checkout
 update_checkout
 update_hardware_tools
 update_python_app
+install_service
 restart_service
 print_summary
