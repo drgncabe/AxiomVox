@@ -10,6 +10,9 @@ axiomvox-device --simulate-hardware --once
 axiomvox-device --simulate-hardware --self-test
 ```
 
+The installer also leaves the virtual-environment command available directly at
+`/opt/axiomvox/.venv/bin/axiomvox-device`.
+
 ## Run On Device
 
 ```bash

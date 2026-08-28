@@ -45,6 +45,10 @@ update_python_app() {
   sudo -u "${APP_USER}" "${INSTALL_DIR}/.venv/bin/python" -m pip install -e "${INSTALL_DIR}"
 }
 
+install_cli_launcher() {
+  ln -sf "${INSTALL_DIR}/.venv/bin/axiomvox-device" /usr/local/bin/axiomvox-device
+}
+
 configure_user_groups() {
   for group in audio video input i2c gpio spi; do
     if getent group "${group}" >/dev/null 2>&1; then
@@ -97,6 +101,7 @@ AxiomVox updated.
 Branch: ${BRANCH}
 Install directory: ${INSTALL_DIR}
 Service: ${SERVICE_NAME}
+Command: /usr/local/bin/axiomvox-device
 
 Useful checks:
   systemctl status ${SERVICE_NAME}
@@ -110,6 +115,7 @@ update_checkout
 install_runtime_packages
 update_hardware_tools
 update_python_app
+install_cli_launcher
 configure_user_groups
 install_service
 restart_service

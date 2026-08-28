@@ -48,6 +48,7 @@ The installer:
 - Installs AxiomVox into `/opt/axiomvox`.
 - Creates a Python virtual environment.
 - Installs the device app.
+- Installs the `axiomvox-device` command at `/usr/local/bin/axiomvox-device`.
 - Installs and starts the systemd service.
 
 Reboot after the first install so Whisplay overlay, audio, display, and bus
@@ -71,7 +72,7 @@ sudo ./scripts/update.sh
 ```
 
 The updater fetches the configured branch, updates the Python environment, and
-restarts the service.
+reinstalls the command launcher, then restarts the service.
 
 By default, updates do not reinstall vendor hardware drivers. To refresh those
 too:

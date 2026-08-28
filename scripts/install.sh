@@ -141,6 +141,10 @@ install_python_app() {
   sudo -u "${APP_USER}" "${INSTALL_DIR}/.venv/bin/python" -m pip install -e "${INSTALL_DIR}"
 }
 
+install_cli_launcher() {
+  ln -sf "${INSTALL_DIR}/.venv/bin/axiomvox-device" /usr/local/bin/axiomvox-device
+}
+
 install_service() {
   cp "${INSTALL_DIR}/device/systemd/axiomvox.service" "/etc/systemd/system/${SERVICE_NAME}"
   sed -i \
@@ -166,6 +170,7 @@ AxiomVox installed.
 
 Service: ${SERVICE_NAME}
 Install directory: ${INSTALL_DIR}
+Command: /usr/local/bin/axiomvox-device
 Dashboard: http://${ip_address:-localhost}:${WEB_PORT}/
 
 Useful checks:
@@ -190,6 +195,7 @@ enable_pi_interfaces
 prepare_install_dir
 configure_user_groups
 install_python_app
+install_cli_launcher
 install_service
 install_whisplay_driver
 install_pisugar_power_manager
