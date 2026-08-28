@@ -10,21 +10,35 @@ from shared.axiomvox_shared import AppState
 class WhisplayLcdDriver:
     WIDTH = 240
     HEIGHT = 280
+    DEFAULT_BACKLIGHT = 80
 
     def __init__(self, runtime_path: Path | None = None) -> None:
         self.runtime_path = runtime_path or Path("/opt/axiomvox-vendor/Whisplay/runtime/whisplay.py")
         self.board = None
         self.detail = "Whisplay runtime not loaded"
+        self.backlight_enabled = False
         self._load_runtime()
 
     def available(self) -> bool:
         return self.board is not None
+
+    def turn_on(self) -> str:
+        if self.board is None:
+            return self.detail
+        try:
+            self.backlight_enabled = False
+            self._ensure_backlight()
+        except Exception as exc:
+            self.detail = f"Whisplay backlight update failed: {exc}"
+            return self.detail
+        return f"Whisplay backlight set to {self.DEFAULT_BACKLIGHT}"
 
     def render(self, state: AppState) -> str:
         if self.board is None:
             return self.detail
 
         try:
+            self._ensure_backlight()
             image = self._build_image(state)
             draw_image = getattr(self.board, "draw_image", None)
             if callable(draw_image):
@@ -57,9 +71,18 @@ class WhisplayLcdDriver:
                 self.detail = "Whisplay runtime loaded, but board class was not found"
                 return
             self.board = board_class()
+            self._ensure_backlight()
             self.detail = "Whisplay runtime loaded"
         except Exception as exc:
             self.detail = f"Whisplay runtime load failed: {exc}"
+
+    def _ensure_backlight(self) -> None:
+        if self.board is None or self.backlight_enabled:
+            return
+        set_backlight = getattr(self.board, "set_backlight", None)
+        if callable(set_backlight):
+            set_backlight(self.DEFAULT_BACKLIGHT)
+            self.backlight_enabled = True
 
     def _build_image(self, state: AppState) -> bytes:
         try:

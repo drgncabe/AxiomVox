@@ -31,6 +31,12 @@ axiomvox-device --self-test --no-lcd
 On hardware with the Whisplay runtime and `python3-pil` installed, omit
 `--no-lcd` to include LCD rendering in the self-test.
 
+To test only the Whisplay LCD backlight:
+
+```bash
+axiomvox-device --lcd-on
+```
+
 If the LCD-inclusive self-test reports `Device or resource busy`, the running
 `axiomvox.service` probably already owns the Whisplay SPI/GPIO device. Stop the
 service before running that test:

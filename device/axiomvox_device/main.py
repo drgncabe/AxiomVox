@@ -28,6 +28,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--once", action="store_true", help="Probe and render status once")
     parser.add_argument("--self-test", action="store_true", help="Run M1 diagnostics and exit")
     parser.add_argument("--no-lcd", action="store_true", help="Do not attempt Whisplay LCD hardware updates")
+    parser.add_argument("--lcd-on", action="store_true", help="Turn on the Whisplay LCD backlight and exit")
     parser.add_argument("--status-file", type=Path)
     parser.add_argument("--session-dir", type=Path, default=Path("/var/lib/axiomvox/sessions"))
     parser.add_argument("--metadata-only", action="store_true", help="Do not launch ALSA capture")
@@ -56,6 +57,10 @@ def main(argv: list[str] | None = None) -> int:
 
     state.hardware = probe.collect()
     state.touch()
+
+    if args.lcd_on:
+        print(lcd.turn_on() if lcd is not None else "LCD disabled", file=sys.stdout)
+        return 0 if lcd is not None and lcd.available() else 1
 
     if args.self_test:
         return _run_self_test(state, whisplay, hdmi, lcd)
