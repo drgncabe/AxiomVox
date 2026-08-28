@@ -50,10 +50,11 @@ def main(argv: list[str] | None = None) -> int:
     probe = HardwareProbe(simulate=config.simulate_hardware)
     sessions = SessionManager(config)
     controller = ApplianceController(sessions)
-    pollers = [WhisplayButtonPoller(probe), PiSugarButtonPoller(probe)]
     whisplay = WhisplayRenderer()
     hdmi = HdmiRenderer()
     lcd = None if args.no_lcd else WhisplayLcdDriver()
+    whisplay_board = lcd.board if lcd is not None else None
+    pollers = [WhisplayButtonPoller(probe, whisplay_board), PiSugarButtonPoller(probe)]
 
     state.hardware = probe.collect()
     state.touch()
