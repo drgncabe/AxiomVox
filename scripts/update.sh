@@ -33,10 +33,24 @@ update_checkout() {
   chown -R "${APP_USER}:${APP_GROUP}" "${INSTALL_DIR}"
 }
 
+install_runtime_packages() {
+  export DEBIAN_FRONTEND=noninteractive
+  apt-get update
+  apt-get install -y --no-install-recommends python3-pil
+}
+
 update_python_app() {
   sudo -u "${APP_USER}" python3 -m venv "${INSTALL_DIR}/.venv"
   sudo -u "${APP_USER}" "${INSTALL_DIR}/.venv/bin/python" -m pip install --upgrade pip
   sudo -u "${APP_USER}" "${INSTALL_DIR}/.venv/bin/python" -m pip install -e "${INSTALL_DIR}"
+}
+
+configure_user_groups() {
+  for group in audio video input i2c gpio spi; do
+    if getent group "${group}" >/dev/null 2>&1; then
+      usermod -aG "${group}" "${APP_USER}"
+    fi
+  done
 }
 
 install_service() {
@@ -93,8 +107,10 @@ EOF
 require_root
 require_checkout
 update_checkout
+install_runtime_packages
 update_hardware_tools
 update_python_app
+configure_user_groups
 install_service
 restart_service
 print_summary

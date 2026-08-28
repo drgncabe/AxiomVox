@@ -67,4 +67,4 @@ def test_pisugar_button_detects_readable_i2c_register() -> None:
     result = probe._probe_pisugar_button()
 
     assert result.ok is True
-    assert "0x57/0x08" in result.detail
+    assert "custom_register:0x00" in result.detail

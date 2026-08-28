@@ -142,6 +142,10 @@ class HardwareProbe:
         return ProbeResult(False, "PiSugar power interface not found")
 
     def _probe_pisugar_button(self) -> ProbeResult:
+        state = self.read_pisugar_button_state()
+        if state:
+            return ProbeResult(True, f"PiSugar button state readable: {state}")
+
         responses = []
         for gesture in ("single", "double", "long"):
             response = self._query_pisugar(f"get button_enable {gesture}")
@@ -170,6 +174,17 @@ class HardwareProbe:
                 f"PiSugar I2C custom button register readable at 0x57/0x08: 0x{button_register:02x}",
             )
         return ProbeResult(False, f"PiSugar button API did not respond; {service.detail}")
+
+    def read_pisugar_button_state(self) -> str | None:
+        for command in ("get button", "get button_state", "get tap", "get button_enable"):
+            response = self._query_pisugar(command)
+            if response:
+                return self._parse_pisugar_value(response)
+
+        custom_button = self._read_i2c_byte(0x57, 0x08)
+        if custom_button is not None:
+            return f"custom_register:0x{custom_button:02x}"
+        return None
 
     def _read_battery_percentage(self) -> int | None:
         pisugar_battery = self._query_pisugar("get battery")

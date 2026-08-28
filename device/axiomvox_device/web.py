@@ -9,6 +9,8 @@ from urllib.parse import parse_qs
 from shared.axiomvox_shared import AppState
 
 from .config import DeviceConfig
+from .controls import ApplianceController
+from .events import ButtonEvent
 from .shutdown import ShutdownController
 
 
@@ -34,6 +36,7 @@ class StatusServer:
     def _handler(self) -> type[BaseHTTPRequestHandler]:
         state = self.state
         shutdown = self.shutdown
+        controller = ApplianceController()
 
         class Handler(BaseHTTPRequestHandler):
             def do_GET(self) -> None:
@@ -42,6 +45,9 @@ class StatusServer:
                     return
                 if self.path == "/api/status":
                     self._send_json(state.to_dict())
+                    return
+                if self.path == "/api/diagnostics":
+                    self._send_json({"diagnostics": state.to_dict()["hardware"]["diagnostics"]})
                     return
                 if self.path == "/" or self.path.startswith("/?"):
                     self._send_text(render_dashboard(state), HTTPStatus.OK, "text/html; charset=utf-8")
@@ -57,6 +63,15 @@ class StatusServer:
                     state.shutdown_message = shutdown.request()
                     state.touch()
                     self._send_json({"ok": True, "message": state.shutdown_message})
+                    return
+                if self.path == "/api/button":
+                    source = fields.get("source", [""])[0]
+                    gesture = fields.get("gesture", [""])[0]
+                    if source in {"whisplay", "pisugar"} and gesture in {"short", "double", "long", "very_long"}:
+                        controller.handle_button(ButtonEvent(source, gesture), state)
+                        self._send_json({"ok": True, "state": state.to_dict()})
+                        return
+                    self._send_json({"ok": False, "message": "invalid button event"}, HTTPStatus.BAD_REQUEST)
                     return
                 if self.path == "/shutdown":
                     state.shutdown_requested = True
@@ -133,8 +148,14 @@ def render_dashboard(state: AppState) -> str:
   <p>Device status shell. Recording and transcription are not implemented in M0.</p>
   <section class="panel grid">
     <div class="metric"><div class="label">Mode</div><div class="value">{state.mode}</div></div>
+    <div class="metric"><div class="label">Screen</div><div class="value">{state.active_screen}</div></div>
     <div class="metric"><div class="label">Battery</div><div class="value">{battery}</div></div>
     <div class="metric"><div class="label">Web</div><div class="value">{'OK' if state.web_reachable else 'Starting'}</div></div>
+  </section>
+  <section class="panel">
+    <h2>Controls</h2>
+    <p>{state.status_message}</p>
+    <p>Last button: {state.last_button_event or 'none'}</p>
   </section>
   <section class="panel">
     <h2>M0 Diagnostics</h2>

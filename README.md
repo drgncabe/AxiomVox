@@ -65,6 +65,7 @@ repository path.
 - [V1 Architecture](docs/v1-architecture.md)
 - [Product Decisions](docs/product-decisions.md)
 - [M0 Acceptance](docs/m0-acceptance.md)
+- [M1 Appliance Loop](docs/m1-appliance-loop.md)
 - [AVTP/1 Protocol](docs/avtp-1.md)
 - [OS and Installation](docs/os-and-install.md)
 

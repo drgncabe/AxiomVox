@@ -36,6 +36,13 @@ class AppState:
     updated_at: str = field(default_factory=utc_now_iso)
     hardware: HardwareStatus = field(default_factory=HardwareStatus)
     web_reachable: bool = False
+    active_screen: str = "ready"
+    menu_items: list[str] = field(
+        default_factory=lambda: ["Status", "Display", "Network", "Power", "Advanced", "Exit"]
+    )
+    menu_index: int = 0
+    status_message: str = "Ready"
+    last_button_event: str = ""
     shutdown_requested: bool = False
     shutdown_message: str = ""
 

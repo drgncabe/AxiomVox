@@ -14,6 +14,25 @@ class WhisplayRenderer:
             if state.hardware.battery_percentage is not None
             else "n/a"
         )
+        if state.active_screen == "menu":
+            selected = state.menu_items[state.menu_index]
+            return "\n".join(
+                [
+                    "AxiomVox MENU",
+                    f"> {selected}",
+                    "Short: next",
+                    "Long: select",
+                ]
+            )
+        if state.active_screen == "shutdown_confirm":
+            return "\n".join(
+                [
+                    "SHUTDOWN?",
+                    "Hold PiSugar",
+                    "Release cancels",
+                    "Web also available",
+                ]
+            )
         return "\n".join(
             [
                 "AxiomVox READY",
@@ -45,9 +64,12 @@ class HdmiRenderer:
         lines = [
             "AxiomVox Device Status",
             f"Mode: {state.mode}",
+            f"Screen: {state.active_screen}",
             f"Started: {state.started_at}",
             f"Updated: {state.updated_at}",
             f"Battery: {battery}",
+            f"Message: {state.status_message}",
+            f"Last button: {state.last_button_event or 'none'}",
             "",
             "M0 Checklist",
         ]

@@ -57,11 +57,20 @@ install_packages() {
     git \
     netcat-openbsd \
     python3 \
+    python3-pil \
     python3-pip \
     python3-venv \
     alsa-utils \
     i2c-tools \
     raspi-config
+}
+
+configure_user_groups() {
+  for group in audio video input i2c gpio spi; do
+    if getent group "${group}" >/dev/null 2>&1; then
+      usermod -aG "${group}" "${APP_USER}"
+    fi
+  done
 }
 
 enable_pi_interfaces() {
@@ -179,6 +188,7 @@ detect_profile
 install_packages
 enable_pi_interfaces
 prepare_install_dir
+configure_user_groups
 install_python_app
 install_service
 install_whisplay_driver

@@ -1,12 +1,13 @@
 # Device
 
 The M0 device application validates hardware, renders status, serves the web
-dashboard, and runs under systemd.
+dashboard, handles early appliance controls, and runs under systemd.
 
 ## Run Locally
 
 ```bash
 axiomvox-device --simulate-hardware --once
+axiomvox-device --simulate-hardware --self-test
 ```
 
 ## Run On Device
