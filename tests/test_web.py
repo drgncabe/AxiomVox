@@ -1,5 +1,5 @@
 from shared.axiomvox_shared import AppState, HardwareStatus, ServiceStatus, SessionSummary, SystemStats
-from device.axiomvox_device.web import _session_file_path, render_dashboard
+from device.axiomvox_device.web import _session_file_path, render_dashboard, render_display_settings, render_power_settings
 
 
 def test_dashboard_documents_future_sections_without_implementing_them() -> None:
@@ -20,8 +20,27 @@ def test_dashboard_documents_future_sections_without_implementing_them() -> None
     assert "55%" in html
     assert "1m" in html
     assert "Brightness" in html
-    assert "Reboot" in html
+    assert "/settings/display" in html
+    assert "/settings/power" in html
     assert "<span class=\"detail\">available</span>" in html
+
+
+def test_display_settings_page_shows_brightness_and_sleep() -> None:
+    state = AppState(brightness=40, display_sleep_timeout_seconds=30)
+
+    html = render_display_settings(state)
+
+    assert "Display Settings" in html
+    assert "Current: 40%" in html
+    assert "Current: 30s" in html
+
+
+def test_power_settings_page_shows_power_actions() -> None:
+    html = render_power_settings(AppState())
+
+    assert "Power Settings" in html
+    assert "Reboot" in html
+    assert "Shutdown" in html
 
 
 def test_dashboard_shows_active_and_recent_sessions() -> None:

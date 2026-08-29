@@ -62,11 +62,15 @@ class ApplianceController:
             state.active_screen = "menu"
             state.status_message = "Menu"
             return
+        if state.active_screen == "settings_menu":
+            state.settings_index = (state.settings_index + 1) % len(state.settings_items)
+            state.status_message = f"Settings: {state.settings_items[state.settings_index]}"
+            return
         if state.active_screen == "power":
             state.power_index = (state.power_index + 1) % len(state.power_items)
             state.status_message = f"Power: {state.power_items[state.power_index]}"
             return
-        if state.active_screen == "brightness":
+        if state.active_screen == "display_settings":
             self.adjust_brightness(state)
             return
 
@@ -78,8 +82,11 @@ class ApplianceController:
         if state.active_screen == "power":
             self.select_power_item(state)
             return
-        if state.active_screen == "brightness":
-            state.active_screen = "menu"
+        if state.active_screen == "settings_menu":
+            self.select_settings_item(state)
+            return
+        if state.active_screen == "display_settings":
+            state.active_screen = "settings_menu"
             state.status_message = "Menu"
             return
         if state.active_screen in {"status", "settings", "sessions", "reboot_confirm", "shutdown_confirm"}:
@@ -95,20 +102,35 @@ class ApplianceController:
             state.active_screen = "power"
             state.power_index = 0
             state.status_message = f"Power: {state.power_items[state.power_index]}"
-        elif item == "Brightness":
-            state.active_screen = "brightness"
-            state.status_message = f"Brightness: {state.brightness}%"
         elif item == "Status":
             state.active_screen = "status"
             state.status_message = "Status"
         elif item == "Settings":
-            state.active_screen = "settings"
-            state.status_message = "Settings"
+            state.active_screen = "settings_menu"
+            state.settings_index = 0
+            state.status_message = f"Settings: {state.settings_items[state.settings_index]}"
         elif item == "Sessions":
             state.active_screen = "sessions"
             state.status_message = f"Sessions: {len(state.recent_sessions)} recent"
         else:
             state.status_message = f"{item} configuration is planned"
+
+    def select_settings_item(self, state: AppState) -> str:
+        item = state.settings_items[state.settings_index]
+        if item == "Back":
+            state.active_screen = "menu"
+            state.status_message = "Menu"
+            return "back"
+        if item == "Display":
+            state.active_screen = "display_settings"
+            state.status_message = f"Brightness: {state.brightness}%"
+            return "display"
+        if item == "Power":
+            state.active_screen = "power"
+            state.power_index = 0
+            state.status_message = f"Power: {state.power_items[state.power_index]}"
+            return "power"
+        return "unknown"
 
     def select_power_item(self, state: AppState) -> str:
         item = state.power_items[state.power_index]

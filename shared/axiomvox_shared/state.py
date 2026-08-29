@@ -71,13 +71,18 @@ class AppState:
     web_reachable: bool = False
     active_screen: str = "ready"
     menu_items: list[str] = field(
-        default_factory=lambda: ["Status", "Settings", "Sessions", "Power", "Brightness", "Exit"]
+        default_factory=lambda: ["Status", "Settings", "Sessions", "Exit"]
     )
     menu_index: int = 0
+    settings_items: list[str] = field(default_factory=lambda: ["Display", "Power", "Back"])
+    settings_index: int = 0
     power_items: list[str] = field(default_factory=lambda: ["Shutdown", "Reboot", "Back"])
     power_index: int = 0
     brightness_levels: list[int] = field(default_factory=lambda: [20, 40, 60, 80, 100])
     brightness: int = 80
+    display_awake: bool = True
+    display_sleep_timeout_seconds: int = 300
+    user_action_sequence: int = 0
     status_message: str = "Ready"
     last_button_event: str = ""
     current_session: SessionSummary | None = None
@@ -88,6 +93,11 @@ class AppState:
 
     def touch(self) -> None:
         self.updated_at = utc_now_iso()
+
+    def mark_user_action(self) -> None:
+        self.user_action_sequence += 1
+        self.display_awake = True
+        self.touch()
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

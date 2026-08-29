@@ -24,6 +24,16 @@ class WhisplayRenderer:
                     "Long: select",
                 ]
             )
+        if state.active_screen == "settings_menu":
+            selected = state.settings_items[state.settings_index]
+            return "\n".join(
+                [
+                    "SETTINGS",
+                    f"> {selected}",
+                    "Short: next",
+                    "Long: select",
+                ]
+            )
         if state.active_screen in {"settings", "status"}:
             return "\n".join(
                 [
@@ -53,13 +63,13 @@ class WhisplayRenderer:
                     "Long: select",
                 ]
             )
-        if state.active_screen == "brightness":
+        if state.active_screen == "display_settings":
             return "\n".join(
                 [
-                    "AxiomVox LIGHT",
+                    "DISPLAY",
                     f"Brightness {state.brightness}%",
-                    "Short: change",
-                    "Long: back",
+                    f"Sleep {_sleep_timeout_text(state.display_sleep_timeout_seconds)}",
+                    "Short: light",
                 ]
             )
         if state.active_screen == "shutdown_confirm":
@@ -138,6 +148,7 @@ class HdmiRenderer:
             f"Memory: {_memory_text(state.system.memory_available_mb, state.system.memory_total_mb)}",
             f"Load: {_load_text(state.system.load_1m)} {_load_text(state.system.load_5m)} {_load_text(state.system.load_15m)}",
             f"Brightness: {state.brightness}%",
+            f"Display: {'awake' if state.display_awake else 'sleep'} after {_sleep_timeout_text(state.display_sleep_timeout_seconds)}",
             f"Message: {state.status_message}",
             f"Last button: {state.last_button_event or 'none'}",
             f"Current session: {state.current_session.id if state.current_session else 'none'}",
@@ -181,6 +192,8 @@ def _size_text(size_bytes: int | None) -> str:
 def _uptime_text(seconds: int | None) -> str:
     if seconds is None:
         return "--"
+    if seconds < 60:
+        return f"{seconds}s"
     minutes = seconds // 60
     hours = minutes // 60
     days = hours // 24
@@ -202,3 +215,9 @@ def _load_text(load: float | None) -> str:
     if load is None:
         return "--"
     return f"{load:.2f}"
+
+
+def _sleep_timeout_text(seconds: int) -> str:
+    if seconds <= 0:
+        return "Off"
+    return _uptime_text(seconds)

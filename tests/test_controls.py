@@ -39,7 +39,7 @@ def test_pisugar_short_press_advances_system_menu() -> None:
 
     assert state.active_screen == "menu"
     assert state.menu_index == 1
-    assert state.status_message == "Menu: Display"
+    assert state.status_message == "Menu: Settings"
 
 
 def test_pisugar_very_long_press_opens_shutdown_confirmation() -> None:
@@ -60,14 +60,23 @@ def test_very_long_press_on_confirm_requests_power_action() -> None:
     assert state.status_message == "Reboot requested"
 
 
-def test_select_settings_opens_system_stats_screen() -> None:
+def test_select_settings_opens_settings_menu() -> None:
     state = AppState()
     state.menu_index = state.menu_items.index("Settings")
 
     ApplianceController().handle_button(ButtonEvent("pisugar", "long"), state)
 
-    assert state.active_screen == "settings"
-    assert state.status_message == "Settings"
+    assert state.active_screen == "settings_menu"
+    assert state.status_message == "Settings: Display"
+
+
+def test_settings_menu_opens_display_settings() -> None:
+    state = AppState(active_screen="settings_menu")
+
+    ApplianceController().handle_button(ButtonEvent("pisugar", "long"), state)
+
+    assert state.active_screen == "display_settings"
+    assert state.status_message == "Brightness: 80%"
 
 
 def test_power_menu_cycles_and_selects_reboot_confirmation() -> None:
@@ -82,7 +91,7 @@ def test_power_menu_cycles_and_selects_reboot_confirmation() -> None:
 
 
 def test_brightness_screen_cycles_levels() -> None:
-    state = AppState(active_screen="brightness", brightness=80)
+    state = AppState(active_screen="display_settings", brightness=80)
 
     ApplianceController().handle_button(ButtonEvent("pisugar", "short"), state)
 

@@ -24,7 +24,10 @@ class ShutdownController:
             return f"{action.title()} requested. Dry-run mode is active."
 
         try:
-            subprocess.Popen(commands[action])
-        except OSError as exc:
+            result = subprocess.run(commands[action], check=False, capture_output=True, text=True, timeout=5)
+        except (OSError, subprocess.TimeoutExpired) as exc:
             return f"{action.title()} request failed: {exc}"
+        if result.returncode != 0:
+            detail = (result.stderr or result.stdout).strip()
+            return f"{action.title()} request failed: {detail or 'systemctl returned an error'}"
         return f"Graceful {action} requested."

@@ -20,9 +20,15 @@ Top-level menu:
 Status
 Settings
 Sessions
-Power
-Brightness
 Exit
+```
+
+Settings menu:
+
+```text
+Display
+Power
+Back
 ```
 
 ## Settings
@@ -49,6 +55,13 @@ The web dashboard exposes real reboot/shutdown requests when the device service
 is running with `--allow-shutdown`. Without that flag, power actions stay in
 dry-run mode.
 
+The installer adds a narrow sudoers rule for the service user that permits only:
+
+```text
+systemctl poweroff
+systemctl reboot
+```
+
 ## Brightness
 
 Brightness levels:
@@ -62,7 +75,16 @@ Brightness levels:
 ```
 
 The web dashboard can set brightness directly. The physical menu cycles through
-these levels with short presses on the Brightness screen.
+these levels with short presses on the Display Settings screen.
+
+Screen sleep can be configured from Display Settings. The default timeout is:
+
+```text
+5 minutes
+```
+
+Set `AXIOMVOX_DISPLAY_SLEEP_TIMEOUT=0` before running the installer/updater to
+disable automatic screen sleep at startup.
 
 ## Known Follow-Up
 

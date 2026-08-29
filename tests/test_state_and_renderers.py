@@ -52,3 +52,13 @@ def test_whisplay_settings_screen_shows_system_stats() -> None:
     assert "AxiomVox STATUS" in rendered
     assert "UP 2m" in rendered
     assert "LOAD 0.50" in rendered
+
+
+def test_whisplay_display_settings_screen_shows_sleep_timeout() -> None:
+    state = AppState(active_screen="display_settings", brightness=60, display_sleep_timeout_seconds=30)
+
+    rendered = WhisplayRenderer().render(state)
+
+    assert "DISPLAY" in rendered
+    assert "Brightness 60%" in rendered
+    assert "Sleep 30s" in rendered

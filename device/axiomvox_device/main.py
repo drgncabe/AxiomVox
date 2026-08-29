@@ -40,6 +40,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--capture-format", default="S32_LE")
     parser.add_argument("--capture-rate", type=int, default=48000)
     parser.add_argument("--capture-channels", type=int, default=2)
+    parser.add_argument("--display-sleep-timeout", type=int, default=300)
     return parser
 
 
@@ -59,6 +60,7 @@ def main(argv: list[str] | None = None) -> int:
         capture_channels=args.capture_channels,
     )
     state = AppState()
+    state.display_sleep_timeout_seconds = max(0, args.display_sleep_timeout)
     probe = HardwareProbe(simulate=config.simulate_hardware)
     sessions = SessionManager(config)
     power = ShutdownController(config)
@@ -90,7 +92,7 @@ def main(argv: list[str] | None = None) -> int:
         _publish_status(state, whisplay, hdmi, lcd, config.status_file)
         return 0
 
-    server = StatusServer(state, config, controller)
+    server = StatusServer(state, config, controller, lcd)
     stop = False
 
     def request_stop(signum: int, frame: object) -> None:
@@ -104,6 +106,8 @@ def main(argv: list[str] | None = None) -> int:
     next_hardware_refresh = 0.0
     next_system_refresh = 0.0
     next_display_refresh = 0.0
+    last_display_activity = time.monotonic()
+    last_user_action_sequence = state.user_action_sequence
     try:
         while not stop:
             now = time.monotonic()
@@ -120,14 +124,37 @@ def main(argv: list[str] | None = None) -> int:
             display_dirty = False
             for poller in pollers:
                 for event in poller.poll():
-                    controller.handle_button(event, state)
+                    if not state.display_awake and event.source == "pisugar":
+                        state.display_awake = True
+                        state.status_message = "Display awake"
+                        state.touch()
+                    else:
+                        controller.handle_button(event, state)
+                    last_display_activity = now
+                    state.display_awake = True
                     display_dirty = True
+
+            if state.user_action_sequence != last_user_action_sequence:
+                last_user_action_sequence = state.user_action_sequence
+                last_display_activity = now
+                state.display_awake = True
+                display_dirty = True
 
             if state.power_action_requested:
                 action = state.power_action_requested
                 state.power_action_requested = ""
                 state.shutdown_message = power.request_power(action)
                 state.status_message = state.shutdown_message
+                state.touch()
+                display_dirty = True
+
+            if (
+                state.display_sleep_timeout_seconds > 0
+                and state.display_awake
+                and now - last_display_activity >= state.display_sleep_timeout_seconds
+            ):
+                state.display_awake = False
+                state.status_message = "Display sleeping"
                 state.touch()
                 display_dirty = True
 

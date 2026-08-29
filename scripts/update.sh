@@ -16,6 +16,7 @@ CAPTURE_DEVICE="${AXIOMVOX_CAPTURE_DEVICE:-plughw:whisplaysound,0}"
 CAPTURE_FORMAT="${AXIOMVOX_CAPTURE_FORMAT:-S32_LE}"
 CAPTURE_RATE="${AXIOMVOX_CAPTURE_RATE:-48000}"
 CAPTURE_CHANNELS="${AXIOMVOX_CAPTURE_CHANNELS:-2}"
+DISPLAY_SLEEP_TIMEOUT="${AXIOMVOX_DISPLAY_SLEEP_TIMEOUT:-300}"
 
 require_root() {
   if [[ "${EUID}" -ne 0 ]]; then
@@ -41,7 +42,7 @@ update_checkout() {
 install_runtime_packages() {
   export DEBIAN_FRONTEND=noninteractive
   apt-get update
-  apt-get install -y --no-install-recommends python3-libgpiod python3-pil python3-spidev
+  apt-get install -y --no-install-recommends python3-libgpiod python3-pil python3-spidev sudo
 }
 
 update_python_app() {
@@ -65,6 +66,12 @@ configure_user_groups() {
   done
 }
 
+install_power_sudoers() {
+  local sudoers_file="/etc/sudoers.d/axiomvox-power"
+  printf "%s ALL=(root) NOPASSWD: /usr/bin/systemctl poweroff, /usr/bin/systemctl reboot, /bin/systemctl poweroff, /bin/systemctl reboot\n" "${APP_USER}" > "${sudoers_file}"
+  chmod 0440 "${sudoers_file}"
+}
+
 install_service() {
   cp "${INSTALL_DIR}/device/systemd/axiomvox.service" "/etc/systemd/system/${SERVICE_NAME}"
   sed -i \
@@ -77,6 +84,7 @@ install_service() {
     -e "s|--capture-format S32_LE|--capture-format ${CAPTURE_FORMAT}|g" \
     -e "s|--capture-rate 48000|--capture-rate ${CAPTURE_RATE}|g" \
     -e "s|--capture-channels 2|--capture-channels ${CAPTURE_CHANNELS}|g" \
+    -e "s|--display-sleep-timeout 300|--display-sleep-timeout ${DISPLAY_SLEEP_TIMEOUT}|g" \
     -e "s|User=pi|User=${APP_USER}|g" \
     -e "s|Group=pi|Group=${APP_GROUP}|g" \
     "/etc/systemd/system/${SERVICE_NAME}"
@@ -131,6 +139,7 @@ update_hardware_tools
 update_python_app
 install_cli_launcher
 configure_user_groups
+install_power_sudoers
 install_service
 restart_service
 print_summary

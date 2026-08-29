@@ -5,6 +5,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from threading import Thread
+from typing import TYPE_CHECKING
 from urllib.parse import parse_qs, unquote
 
 from shared.axiomvox_shared import AppState
@@ -14,6 +15,9 @@ from .controls import ApplianceController
 from .events import ButtonEvent
 from .shutdown import ShutdownController
 
+if TYPE_CHECKING:
+    from .lcd import WhisplayLcdDriver
+
 
 class StatusServer:
     def __init__(
@@ -21,11 +25,13 @@ class StatusServer:
         state: AppState,
         config: DeviceConfig,
         controller: ApplianceController | None = None,
+        lcd: WhisplayLcdDriver | None = None,
     ) -> None:
         self.state = state
         self.config = config
         self.shutdown = ShutdownController(config)
         self.controller = controller or ApplianceController()
+        self.lcd = lcd
         self.httpd = ThreadingHTTPServer((config.host, config.port), self._handler())
         self.thread = Thread(target=self.httpd.serve_forever, daemon=True)
 
@@ -45,6 +51,7 @@ class StatusServer:
         config = self.config
         shutdown = self.shutdown
         controller = self.controller
+        lcd = self.lcd
 
         class Handler(BaseHTTPRequestHandler):
             def do_GET(self) -> None:
@@ -68,6 +75,12 @@ class StatusServer:
                 if self.path.startswith("/sessions/"):
                     self._send_session_file()
                     return
+                if self.path == "/settings/display":
+                    self._send_text(render_display_settings(state), HTTPStatus.OK, "text/html; charset=utf-8")
+                    return
+                if self.path == "/settings/power":
+                    self._send_text(render_power_settings(state), HTTPStatus.OK, "text/html; charset=utf-8")
+                    return
                 if self.path == "/" or self.path.startswith("/?"):
                     self._send_text(render_dashboard(state), HTTPStatus.OK, "text/html; charset=utf-8")
                     return
@@ -90,9 +103,9 @@ class StatusServer:
                         return
                     state.shutdown_requested = action == "shutdown"
                     state.shutdown_message = shutdown.request_power(action)
-                    state.touch()
+                    state.mark_user_action()
                     if self.path == "/power":
-                        self._send_text(render_dashboard(state), HTTPStatus.OK, "text/html; charset=utf-8")
+                        self._send_text(render_power_settings(state), HTTPStatus.OK, "text/html; charset=utf-8")
                         return
                     self._send_json({"ok": True, "message": state.shutdown_message})
                     return
@@ -104,18 +117,35 @@ class StatusServer:
                         return
                     state.brightness = max(0, min(100, brightness))
                     state.status_message = f"Brightness: {state.brightness}%"
-                    state.active_screen = "brightness"
-                    state.touch()
+                    state.active_screen = "display_settings"
+                    state.mark_user_action()
+                    if lcd is not None:
+                        state.status_message = lcd.set_brightness(state.brightness)
                     if self.path == "/brightness":
-                        self._send_text(render_dashboard(state), HTTPStatus.OK, "text/html; charset=utf-8")
+                        self._send_text(render_display_settings(state), HTTPStatus.OK, "text/html; charset=utf-8")
                         return
                     self._send_json({"ok": True, "brightness": state.brightness})
+                    return
+                if self.path in {"/api/display-sleep", "/display-sleep"}:
+                    try:
+                        timeout = int(fields.get("timeout", [""])[0])
+                    except ValueError:
+                        self._send_json({"ok": False, "message": "invalid timeout"}, HTTPStatus.BAD_REQUEST)
+                        return
+                    state.display_sleep_timeout_seconds = max(0, timeout)
+                    state.status_message = _sleep_timeout_message(state.display_sleep_timeout_seconds)
+                    state.mark_user_action()
+                    if self.path == "/display-sleep":
+                        self._send_text(render_display_settings(state), HTTPStatus.OK, "text/html; charset=utf-8")
+                        return
+                    self._send_json({"ok": True, "timeout": state.display_sleep_timeout_seconds})
                     return
                 if self.path in {"/api/button", "/button"}:
                     source = fields.get("source", [""])[0]
                     gesture = fields.get("gesture", [""])[0]
                     if source in {"whisplay", "pisugar"} and gesture in {"short", "double", "long", "very_long"}:
                         controller.handle_button(ButtonEvent(source, gesture), state)
+                        state.mark_user_action()
                         if self.path == "/button":
                             self._send_text(render_dashboard(state), HTTPStatus.OK, "text/html; charset=utf-8")
                             return
@@ -126,8 +156,8 @@ class StatusServer:
                 if self.path == "/shutdown":
                     state.shutdown_requested = True
                     state.shutdown_message = shutdown.request()
-                    state.touch()
-                    self._send_text(render_dashboard(state), HTTPStatus.OK, "text/html; charset=utf-8")
+                    state.mark_user_action()
+                    self._send_text(render_power_settings(state), HTTPStatus.OK, "text/html; charset=utf-8")
                     return
                 self._send_json({"ok": False, "fields": fields}, HTTPStatus.NOT_FOUND)
 
@@ -214,10 +244,6 @@ def render_dashboard(state: AppState) -> str:
     )
     if not recent_sessions:
         recent_sessions = "<li>No saved sessions yet.</li>"
-    brightness_buttons = "\n".join(
-        f"<form method=\"post\" action=\"/brightness\"><input type=\"hidden\" name=\"brightness\" value=\"{level}\"><button type=\"submit\">{level}%</button></form>"
-        for level in state.brightness_levels
-    )
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -240,6 +266,7 @@ def render_dashboard(state: AppState) -> str:
     button {{ border: 0; border-radius: 6px; background: #155c85; color: white; padding: .7rem 1rem; font-weight: 700; }}
     .danger {{ background: #a83232; }}
     a {{ color: #155c85; }}
+    .navlinks {{ display: flex; flex-wrap: wrap; gap: 1rem; }}
   </style>
 </head>
 <body>
@@ -274,8 +301,10 @@ def render_dashboard(state: AppState) -> str:
   </section>
   <section class="panel">
     <h2>Settings</h2>
-    <h3>Brightness</h3>
-    <div class="actions">{brightness_buttons}</div>
+    <nav class="navlinks">
+      <a href="/settings/display">Display settings</a>
+      <a href="/settings/power">Power settings</a>
+    </nav>
   </section>
   <section class="panel">
     <h2>M0 Diagnostics</h2>
@@ -285,6 +314,49 @@ def render_dashboard(state: AppState) -> str:
     <h2>Future Sections</h2>
     <nav>Sessions · Device · Transcription · Settings · Advanced · Development</nav>
   </section>
+</main>
+</body>
+</html>
+"""
+
+
+def render_display_settings(state: AppState) -> str:
+    brightness_buttons = "\n".join(
+        f"<form method=\"post\" action=\"/brightness\"><input type=\"hidden\" name=\"brightness\" value=\"{level}\"><button type=\"submit\">{level}%</button></form>"
+        for level in state.brightness_levels
+    )
+    timeout_buttons = "\n".join(
+        f"<form method=\"post\" action=\"/display-sleep\"><input type=\"hidden\" name=\"timeout\" value=\"{seconds}\"><button type=\"submit\">{label}</button></form>"
+        for label, seconds in [
+            ("Off", 0),
+            ("30s", 30),
+            ("1m", 60),
+            ("5m", 300),
+            ("10m", 600),
+        ]
+    )
+    return _settings_page(
+        "Display Settings",
+        f"""
+  <section class="panel">
+    <h2>Brightness</h2>
+    <p>Current: {state.brightness}%</p>
+    <div class="actions">{brightness_buttons}</div>
+  </section>
+  <section class="panel">
+    <h2>Screen Sleep</h2>
+    <p>Current: {_sleep_timeout_text(state.display_sleep_timeout_seconds)}</p>
+    <p>Screen is {'awake' if state.display_awake else 'sleeping'}.</p>
+    <div class="actions">{timeout_buttons}</div>
+  </section>
+""",
+    )
+
+
+def render_power_settings(state: AppState) -> str:
+    return _settings_page(
+        "Power Settings",
+        f"""
   <section class="panel">
     <h2>Power</h2>
     <p>{state.shutdown_message}</p>
@@ -293,6 +365,33 @@ def render_dashboard(state: AppState) -> str:
       <form method="post" action="/power"><input type="hidden" name="action" value="shutdown"><button class="danger" type="submit">Shutdown</button></form>
     </div>
   </section>
+""",
+    )
+
+
+def _settings_page(title: str, body: str) -> str:
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AxiomVox - {title}</title>
+  <style>
+    body {{ font-family: system-ui, sans-serif; margin: 2rem; color: #17202a; background: #f7f8fa; }}
+    main {{ max-width: 880px; margin: 0 auto; }}
+    section, nav {{ margin-top: 1.25rem; }}
+    .panel {{ background: white; border: 1px solid #d8dee8; border-radius: 8px; padding: 1rem; }}
+    .actions {{ display: flex; flex-wrap: wrap; gap: .5rem; }}
+    button {{ border: 0; border-radius: 6px; background: #155c85; color: white; padding: .7rem 1rem; font-weight: 700; }}
+    .danger {{ background: #a83232; }}
+    a {{ color: #155c85; }}
+  </style>
+</head>
+<body>
+<main>
+  <h1>{title}</h1>
+  <nav><a href="/">Dashboard</a></nav>
+{body}
 </main>
 </body>
 </html>
@@ -335,6 +434,8 @@ def _value_text(value: int | None) -> str:
 def _uptime_text(seconds: int | None) -> str:
     if seconds is None:
         return "--"
+    if seconds < 60:
+        return f"{seconds}s"
     minutes = seconds // 60
     hours = minutes // 60
     days = hours // 24
@@ -356,3 +457,13 @@ def _load_text(load: float | None) -> str:
     if load is None:
         return "--"
     return f"{load:.2f}"
+
+
+def _sleep_timeout_text(seconds: int) -> str:
+    if seconds <= 0:
+        return "Off"
+    return _uptime_text(seconds)
+
+
+def _sleep_timeout_message(seconds: int) -> str:
+    return f"Screen sleep: {_sleep_timeout_text(seconds)}"

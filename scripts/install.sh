@@ -13,6 +13,7 @@ CAPTURE_DEVICE="${AXIOMVOX_CAPTURE_DEVICE:-plughw:whisplaysound,0}"
 CAPTURE_FORMAT="${AXIOMVOX_CAPTURE_FORMAT:-S32_LE}"
 CAPTURE_RATE="${AXIOMVOX_CAPTURE_RATE:-48000}"
 CAPTURE_CHANNELS="${AXIOMVOX_CAPTURE_CHANNELS:-2}"
+DISPLAY_SLEEP_TIMEOUT="${AXIOMVOX_DISPLAY_SLEEP_TIMEOUT:-300}"
 INSTALL_HARDWARE="${AXIOMVOX_INSTALL_HARDWARE:-1}"
 INSTALL_WHISPLAY_DRIVER="${AXIOMVOX_INSTALL_WHISPLAY_DRIVER:-1}"
 INSTALL_WHISPLAY_DAEMON="${AXIOMVOX_INSTALL_WHISPLAY_DAEMON:-0}"
@@ -69,7 +70,8 @@ install_packages() {
     python3-venv \
     alsa-utils \
     i2c-tools \
-    raspi-config
+    raspi-config \
+    sudo
 }
 
 configure_user_groups() {
@@ -78,6 +80,12 @@ configure_user_groups() {
       usermod -aG "${group}" "${APP_USER}"
     fi
   done
+}
+
+install_power_sudoers() {
+  local sudoers_file="/etc/sudoers.d/axiomvox-power"
+  printf "%s ALL=(root) NOPASSWD: /usr/bin/systemctl poweroff, /usr/bin/systemctl reboot, /bin/systemctl poweroff, /bin/systemctl reboot\n" "${APP_USER}" > "${sudoers_file}"
+  chmod 0440 "${sudoers_file}"
 }
 
 enable_pi_interfaces() {
@@ -164,6 +172,7 @@ install_service() {
     -e "s|--capture-format S32_LE|--capture-format ${CAPTURE_FORMAT}|g" \
     -e "s|--capture-rate 48000|--capture-rate ${CAPTURE_RATE}|g" \
     -e "s|--capture-channels 2|--capture-channels ${CAPTURE_CHANNELS}|g" \
+    -e "s|--display-sleep-timeout 300|--display-sleep-timeout ${DISPLAY_SLEEP_TIMEOUT}|g" \
     -e "s|User=pi|User=${APP_USER}|g" \
     -e "s|Group=pi|Group=${APP_GROUP}|g" \
     "/etc/systemd/system/${SERVICE_NAME}"
@@ -207,6 +216,7 @@ install_packages
 enable_pi_interfaces
 prepare_install_dir
 configure_user_groups
+install_power_sudoers
 install_python_app
 install_cli_launcher
 install_service
