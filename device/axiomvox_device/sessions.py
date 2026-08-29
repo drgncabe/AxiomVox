@@ -53,7 +53,8 @@ class SessionManager:
         state.current_session = session
         state.mode = "RECORDING"
         state.status_message = f"Recording {session_id}"
-        self._start_capture(audio_path)
+        session.audio_capture_command = self._capture_command(audio_path)
+        self._start_capture(session.audio_capture_command)
         session.audio_capture = self._capture_note()
         self._write_metadata(session)
         state.touch()
@@ -108,13 +109,13 @@ class SessionManager:
         session.audio_peak = result.peak
         session.audio_rms = result.rms
 
-    def _start_capture(self, audio_path: Path) -> None:
+    def _start_capture(self, command: list[str]) -> None:
         if not self.config.capture_enabled:
             return
         if shutil.which("arecord") is None:
             return
         self.capture_process = subprocess.Popen(
-            ["arecord", "-q", "-f", "S16_LE", "-r", "16000", "-c", "1", "-t", "wav", str(audio_path)],
+            command,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
@@ -153,7 +154,8 @@ class SessionManager:
             "audio_path": session.audio_path,
             "bookmarks": session.bookmarks,
             "audio_capture": session.audio_capture,
-            "audio_format": "wav pcm_s16le 16000hz mono",
+            "audio_capture_command": session.audio_capture_command,
+            "audio_format": _capture_format_label(session),
             "audio_status": session.audio_status,
             "audio_detail": session.audio_detail,
             "audio_duration_seconds": session.audio_duration_seconds,
@@ -165,6 +167,23 @@ class SessionManager:
             "transcription": "not implemented",
         }
         Path(session.metadata_path).write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    def _capture_command(self, audio_path: Path) -> list[str]:
+        return [
+            "arecord",
+            "-q",
+            "-D",
+            self.config.capture_device,
+            "-f",
+            self.config.capture_format,
+            "-r",
+            str(self.config.capture_rate),
+            "-c",
+            str(self.config.capture_channels),
+            "-t",
+            "wav",
+            str(audio_path),
+        ]
 
 
 def _session_id() -> str:
@@ -181,6 +200,11 @@ def _session_from_metadata(payload: dict[str, object], metadata_path: Path) -> S
         audio_path=_string_or_none(payload.get("audio_path")),
         metadata_path=str(metadata_path),
         audio_capture=str(payload.get("audio_capture") or "metadata-only"),
+        audio_capture_command=[
+            str(item) for item in payload.get("audio_capture_command", []) if isinstance(item, str)
+        ]
+        if isinstance(payload.get("audio_capture_command"), list)
+        else [],
         audio_status=str(payload.get("audio_status") or "unknown"),
         audio_detail=str(payload.get("audio_detail") or ""),
         audio_duration_seconds=_float_or_none(payload.get("audio_duration_seconds")),
@@ -217,3 +241,18 @@ def _float_or_none(value: object) -> float | None:
         return float(value)
     except (TypeError, ValueError):
         return None
+
+
+def _capture_format_label(session: SessionSummary) -> str:
+    command = session.audio_capture_command
+    if not command:
+        return "wav"
+    try:
+        sample_format = command[command.index("-f") + 1].lower()
+        sample_rate = command[command.index("-r") + 1]
+        channels = command[command.index("-c") + 1]
+    except (ValueError, IndexError):
+        return "wav"
+
+    channel_label = "mono" if channels == "1" else "stereo" if channels == "2" else f"{channels}ch"
+    return f"wav pcm_{sample_format.lower()} {sample_rate}hz {channel_label}"

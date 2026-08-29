@@ -14,3 +14,7 @@ class DeviceConfig:
     status_file: Path | None = None
     session_dir: Path = Path("/var/lib/axiomvox/sessions")
     capture_enabled: bool = True
+    capture_device: str = "plughw:whisplaysound,0"
+    capture_format: str = "S32_LE"
+    capture_rate: int = 16000
+    capture_channels: int = 2

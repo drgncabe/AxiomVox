@@ -63,19 +63,21 @@ def test_session_manager_validates_saved_wav_and_loads_recent(tmp_path: Path) ->
     manager.start(state)
     audio_path = Path(state.current_session.audio_path or "")
     with wave.open(str(audio_path), "wb") as wav:
-        wav.setnchannels(1)
-        wav.setsampwidth(2)
+        wav.setnchannels(2)
+        wav.setsampwidth(4)
         wav.setframerate(16000)
-        wav.writeframes(b"\x01\x10" * 1600)
+        wav.writeframes(b"\x00\x00\x01\x10" * 3200)
     manager.stop(state)
 
     saved = state.recent_sessions[0]
     assert saved.audio_status == "ok"
     assert saved.audio_duration_seconds == 0.1
     assert saved.audio_size_bytes and saved.audio_size_bytes > 44
+    assert "plughw:whisplaysound,0" in saved.audio_capture_command
 
     restarted_state = AppState()
     manager.load_recent(restarted_state)
 
     assert restarted_state.recent_sessions[0].id == saved.id
     assert restarted_state.recent_sessions[0].audio_status == "ok"
+    assert "plughw:whisplaysound,0" in restarted_state.recent_sessions[0].audio_capture_command

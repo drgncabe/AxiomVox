@@ -56,12 +56,12 @@ def validate_wav(path: Path) -> AudioValidation:
     if frame_count == 0 or duration <= 0:
         status = "empty"
         detail = "WAV opened, but contains no frames"
-    elif sample_width != 2:
+    elif sample_width not in {2, 4}:
         status = "warn"
-        detail = f"expected 16-bit PCM, got {sample_width * 8}-bit samples"
-    elif sample_rate != 16000 or channels != 1:
+        detail = f"expected 16-bit or 32-bit PCM, got {sample_width * 8}-bit samples"
+    elif sample_rate != 16000 or channels != 2:
         status = "warn"
-        detail = f"expected 16000 Hz mono, got {sample_rate} Hz / {channels} channel(s)"
+        detail = f"expected 16000 Hz stereo, got {sample_rate} Hz / {channels} channel(s)"
     elif (rms or 0) < 20 and (peak or 0) < 200:
         status = "silent"
         detail = "audio looks extremely quiet"
@@ -83,7 +83,7 @@ def validate_wav(path: Path) -> AudioValidation:
 
 
 def _scan_pcm(wav: wave.Wave_read, sample_width: int) -> tuple[int | None, int | None]:
-    if sample_width not in {1, 2}:
+    if sample_width not in {1, 2, 4}:
         return None, None
 
     peak = 0
@@ -101,8 +101,10 @@ def _scan_pcm(wav: wave.Wave_read, sample_width: int) -> tuple[int | None, int |
                 total_square += centered * centered
                 total_samples += 1
         else:
-            for idx in range(0, len(frames) - 1, 2):
-                value = int.from_bytes(frames[idx : idx + 2], byteorder="little", signed=True)
+            for idx in range(0, len(frames) - sample_width + 1, sample_width):
+                value = int.from_bytes(frames[idx : idx + sample_width], byteorder="little", signed=True)
+                if sample_width == 4:
+                    value = value >> 16
                 peak = max(peak, abs(value))
                 total_square += value * value
                 total_samples += 1

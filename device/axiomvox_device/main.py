@@ -34,6 +34,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--status-file", type=Path)
     parser.add_argument("--session-dir", type=Path, default=Path("/var/lib/axiomvox/sessions"))
     parser.add_argument("--metadata-only", action="store_true", help="Do not launch ALSA capture")
+    parser.add_argument("--capture-device", default="plughw:whisplaysound,0")
+    parser.add_argument("--capture-format", default="S32_LE")
+    parser.add_argument("--capture-rate", type=int, default=16000)
+    parser.add_argument("--capture-channels", type=int, default=2)
     return parser
 
 
@@ -47,6 +51,10 @@ def main(argv: list[str] | None = None) -> int:
         status_file=args.status_file,
         session_dir=args.session_dir,
         capture_enabled=not args.metadata_only,
+        capture_device=args.capture_device,
+        capture_format=args.capture_format,
+        capture_rate=args.capture_rate,
+        capture_channels=args.capture_channels,
     )
     state = AppState()
     probe = HardwareProbe(simulate=config.simulate_hardware)

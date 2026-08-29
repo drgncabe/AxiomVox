@@ -38,6 +38,7 @@ class SessionSummary:
     audio_path: str | None = None
     metadata_path: str | None = None
     audio_capture: str = "metadata-only"
+    audio_capture_command: list[str] = field(default_factory=list)
     audio_status: str = "pending"
     audio_detail: str = ""
     audio_duration_seconds: float | None = None

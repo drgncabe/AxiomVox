@@ -12,6 +12,10 @@ PISUGAR_INSTALLER_URL="${AXIOMVOX_PISUGAR_INSTALLER_URL:-https://cdn.pisugar.com
 WEB_PORT="${AXIOMVOX_WEB_PORT:-8080}"
 STATUS_FILE="${AXIOMVOX_STATUS_FILE:-/run/axiomvox/status.json}"
 SESSION_DIR="${AXIOMVOX_SESSION_DIR:-/var/lib/axiomvox/sessions}"
+CAPTURE_DEVICE="${AXIOMVOX_CAPTURE_DEVICE:-plughw:whisplaysound,0}"
+CAPTURE_FORMAT="${AXIOMVOX_CAPTURE_FORMAT:-S32_LE}"
+CAPTURE_RATE="${AXIOMVOX_CAPTURE_RATE:-16000}"
+CAPTURE_CHANNELS="${AXIOMVOX_CAPTURE_CHANNELS:-2}"
 
 require_root() {
   if [[ "${EUID}" -ne 0 ]]; then
@@ -69,6 +73,10 @@ install_service() {
     -e "s|--port 8080|--port ${WEB_PORT}|g" \
     -e "s|--status-file /run/axiomvox/status.json|--status-file ${STATUS_FILE}|g" \
     -e "s|--session-dir /var/lib/axiomvox/sessions|--session-dir ${SESSION_DIR}|g" \
+    -e "s|--capture-device plughw:whisplaysound,0|--capture-device ${CAPTURE_DEVICE}|g" \
+    -e "s|--capture-format S32_LE|--capture-format ${CAPTURE_FORMAT}|g" \
+    -e "s|--capture-rate 16000|--capture-rate ${CAPTURE_RATE}|g" \
+    -e "s|--capture-channels 2|--capture-channels ${CAPTURE_CHANNELS}|g" \
     -e "s|User=pi|User=${APP_USER}|g" \
     -e "s|Group=pi|Group=${APP_GROUP}|g" \
     "/etc/systemd/system/${SERVICE_NAME}"
