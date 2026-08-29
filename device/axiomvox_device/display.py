@@ -24,6 +24,44 @@ class WhisplayRenderer:
                     "Long: select",
                 ]
             )
+        if state.active_screen in {"settings", "status"}:
+            return "\n".join(
+                [
+                    "AxiomVox STATUS",
+                    f"UP {_uptime_text(state.system.uptime_seconds)}",
+                    f"MEM {_memory_text(state.system.memory_available_mb, state.system.memory_total_mb)}",
+                    f"LOAD {_load_text(state.system.load_1m)}",
+                ]
+            )
+        if state.active_screen == "sessions":
+            recent = state.recent_sessions[0] if state.recent_sessions else None
+            return "\n".join(
+                [
+                    "AxiomVox SESS",
+                    f"Recent: {len(state.recent_sessions)}",
+                    f"Last: {recent.audio_status.upper() if recent else '--'}",
+                    "Long: back",
+                ]
+            )
+        if state.active_screen == "power":
+            selected = state.power_items[state.power_index]
+            return "\n".join(
+                [
+                    "AxiomVox POWER",
+                    f"> {selected}",
+                    "Short: next",
+                    "Long: select",
+                ]
+            )
+        if state.active_screen == "brightness":
+            return "\n".join(
+                [
+                    "AxiomVox LIGHT",
+                    f"Brightness {state.brightness}%",
+                    "Short: change",
+                    "Long: back",
+                ]
+            )
         if state.active_screen == "shutdown_confirm":
             return "\n".join(
                 [
@@ -31,6 +69,15 @@ class WhisplayRenderer:
                     "Hold PiSugar",
                     "Release cancels",
                     "Web also available",
+                ]
+            )
+        if state.active_screen == "reboot_confirm":
+            return "\n".join(
+                [
+                    "REBOOT?",
+                    "Use web for now",
+                    "Short: menu",
+                    "Long: back",
                 ]
             )
         if state.current_session is not None:
@@ -87,6 +134,10 @@ class HdmiRenderer:
             f"Started: {state.started_at}",
             f"Updated: {state.updated_at}",
             f"Battery: {battery}",
+            f"Uptime: {_uptime_text(state.system.uptime_seconds)}",
+            f"Memory: {_memory_text(state.system.memory_available_mb, state.system.memory_total_mb)}",
+            f"Load: {_load_text(state.system.load_1m)} {_load_text(state.system.load_5m)} {_load_text(state.system.load_15m)}",
+            f"Brightness: {state.brightness}%",
             f"Message: {state.status_message}",
             f"Last button: {state.last_button_event or 'none'}",
             f"Current session: {state.current_session.id if state.current_session else 'none'}",
@@ -125,3 +176,29 @@ def _size_text(size_bytes: int | None) -> str:
     if size_bytes < 1024:
         return f"{size_bytes}B"
     return f"{size_bytes / 1024:.0f}K"
+
+
+def _uptime_text(seconds: int | None) -> str:
+    if seconds is None:
+        return "--"
+    minutes = seconds // 60
+    hours = minutes // 60
+    days = hours // 24
+    if days:
+        return f"{days}d {hours % 24}h"
+    if hours:
+        return f"{hours}h {minutes % 60}m"
+    return f"{minutes}m"
+
+
+def _memory_text(available_mb: int | None, total_mb: int | None) -> str:
+    if available_mb is None or total_mb is None:
+        return "--"
+    used_mb = max(0, total_mb - available_mb)
+    return f"{used_mb}/{total_mb}MB"
+
+
+def _load_text(load: float | None) -> str:
+    if load is None:
+        return "--"
+    return f"{load:.2f}"

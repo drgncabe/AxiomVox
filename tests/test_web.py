@@ -1,4 +1,4 @@
-from shared.axiomvox_shared import AppState, HardwareStatus, ServiceStatus, SessionSummary
+from shared.axiomvox_shared import AppState, HardwareStatus, ServiceStatus, SessionSummary, SystemStats
 from device.axiomvox_device.web import _session_file_path, render_dashboard
 
 
@@ -8,6 +8,7 @@ def test_dashboard_documents_future_sections_without_implementing_them() -> None
             battery_percentage=55,
             diagnostics=[ServiceStatus("pisugar", True, "available")],
         ),
+        system=SystemStats(uptime_seconds=60, load_1m=0.1, load_5m=0.2, load_15m=0.3),
         web_reachable=True,
     )
 
@@ -17,6 +18,9 @@ def test_dashboard_documents_future_sections_without_implementing_them() -> None
     assert "Sessions" in html
     assert "Development" in html
     assert "55%" in html
+    assert "1m" in html
+    assert "Brightness" in html
+    assert "Reboot" in html
     assert "<span class=\"detail\">available</span>" in html
 
 

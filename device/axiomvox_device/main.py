@@ -17,6 +17,8 @@ from .display import HdmiRenderer, WhisplayRenderer
 from .hardware import HardwareProbe
 from .lcd import WhisplayLcdDriver
 from .sessions import SessionManager
+from .shutdown import ShutdownController
+from .system_stats import collect_system_stats
 from .web import StatusServer
 
 
@@ -59,6 +61,7 @@ def main(argv: list[str] | None = None) -> int:
     state = AppState()
     probe = HardwareProbe(simulate=config.simulate_hardware)
     sessions = SessionManager(config)
+    power = ShutdownController(config)
     controller = ApplianceController(sessions)
     whisplay = WhisplayRenderer()
     hdmi = HdmiRenderer()
@@ -67,6 +70,7 @@ def main(argv: list[str] | None = None) -> int:
     pollers = [WhisplayButtonPoller(probe, whisplay_board), PiSugarButtonPoller(probe)]
 
     state.hardware = probe.collect()
+    state.system = collect_system_stats()
     sessions.load_recent(state)
     state.touch()
 
@@ -98,6 +102,7 @@ def main(argv: list[str] | None = None) -> int:
 
     server.start()
     next_hardware_refresh = 0.0
+    next_system_refresh = 0.0
     next_display_refresh = 0.0
     try:
         while not stop:
@@ -107,11 +112,24 @@ def main(argv: list[str] | None = None) -> int:
                 state.touch()
                 next_hardware_refresh = now + 10
 
+            if now >= next_system_refresh:
+                state.system = collect_system_stats()
+                state.touch()
+                next_system_refresh = now + 5
+
             display_dirty = False
             for poller in pollers:
                 for event in poller.poll():
                     controller.handle_button(event, state)
                     display_dirty = True
+
+            if state.power_action_requested:
+                action = state.power_action_requested
+                state.power_action_requested = ""
+                state.shutdown_message = power.request_power(action)
+                state.status_message = state.shutdown_message
+                state.touch()
+                display_dirty = True
 
             if display_dirty or now >= next_display_refresh:
                 _publish_status(state, whisplay, hdmi, lcd, config.status_file)

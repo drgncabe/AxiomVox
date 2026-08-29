@@ -10,11 +10,21 @@ class ShutdownController:
         self.config = config
 
     def request(self) -> str:
+        return self.request_power("shutdown")
+
+    def request_power(self, action: str) -> str:
+        commands = {
+            "shutdown": self.config.shutdown_command,
+            "reboot": self.config.reboot_command,
+        }
+        if action not in commands:
+            return f"Unknown power action: {action}"
+
         if not self.config.allow_shutdown:
-            return "Shutdown requested. Dry-run mode is active."
+            return f"{action.title()} requested. Dry-run mode is active."
 
         try:
-            subprocess.Popen(self.config.shutdown_command)
+            subprocess.Popen(commands[action])
         except OSError as exc:
-            return f"Shutdown request failed: {exc}"
-        return "Graceful shutdown requested."
+            return f"{action.title()} request failed: {exc}"
+        return f"Graceful {action} requested."

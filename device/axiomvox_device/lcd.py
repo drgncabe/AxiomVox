@@ -17,6 +17,7 @@ class WhisplayLcdDriver:
         self.board = None
         self.detail = "Whisplay runtime not loaded"
         self.backlight_enabled = False
+        self.backlight = self.DEFAULT_BACKLIGHT
         self._load_runtime()
 
     def available(self) -> bool:
@@ -33,11 +34,18 @@ class WhisplayLcdDriver:
             return self.detail
         return f"Whisplay backlight set to {self.DEFAULT_BACKLIGHT}"
 
+    def set_brightness(self, brightness: int) -> str:
+        self.backlight = max(0, min(100, brightness))
+        self.backlight_enabled = False
+        self._ensure_backlight()
+        return f"Whisplay backlight set to {self.backlight}"
+
     def render(self, state: AppState) -> str:
         if self.board is None:
             return self.detail
 
         try:
+            self.backlight = state.brightness
             self._ensure_backlight()
             image = self._build_image(state)
             draw_image = getattr(self.board, "draw_image", None)
@@ -81,7 +89,7 @@ class WhisplayLcdDriver:
             return
         set_backlight = getattr(self.board, "set_backlight", None)
         if callable(set_backlight):
-            set_backlight(self.DEFAULT_BACKLIGHT)
+            set_backlight(self.backlight)
             self.backlight_enabled = True
 
     def _build_image(self, state: AppState) -> bytes:

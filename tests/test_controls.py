@@ -49,3 +49,42 @@ def test_pisugar_very_long_press_opens_shutdown_confirmation() -> None:
 
     assert state.active_screen == "shutdown_confirm"
     assert state.status_message == "Hold to confirm shutdown"
+
+
+def test_very_long_press_on_confirm_requests_power_action() -> None:
+    state = AppState(active_screen="reboot_confirm")
+
+    ApplianceController().handle_button(ButtonEvent("pisugar", "very_long"), state)
+
+    assert state.power_action_requested == "reboot"
+    assert state.status_message == "Reboot requested"
+
+
+def test_select_settings_opens_system_stats_screen() -> None:
+    state = AppState()
+    state.menu_index = state.menu_items.index("Settings")
+
+    ApplianceController().handle_button(ButtonEvent("pisugar", "long"), state)
+
+    assert state.active_screen == "settings"
+    assert state.status_message == "Settings"
+
+
+def test_power_menu_cycles_and_selects_reboot_confirmation() -> None:
+    state = AppState(active_screen="power")
+
+    ApplianceController().handle_button(ButtonEvent("pisugar", "short"), state)
+    ApplianceController().handle_button(ButtonEvent("pisugar", "long"), state)
+
+    assert state.power_items[state.power_index] == "Reboot"
+    assert state.active_screen == "reboot_confirm"
+    assert state.status_message == "Hold to confirm reboot"
+
+
+def test_brightness_screen_cycles_levels() -> None:
+    state = AppState(active_screen="brightness", brightness=80)
+
+    ApplianceController().handle_button(ButtonEvent("pisugar", "short"), state)
+
+    assert state.brightness == 100
+    assert state.status_message == "Brightness: 100%"

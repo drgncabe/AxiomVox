@@ -83,6 +83,34 @@ class StatusServer:
                     state.touch()
                     self._send_json({"ok": True, "message": state.shutdown_message})
                     return
+                if self.path in {"/api/power", "/power"}:
+                    action = fields.get("action", [""])[0]
+                    if action not in {"shutdown", "reboot"}:
+                        self._send_json({"ok": False, "message": "invalid power action"}, HTTPStatus.BAD_REQUEST)
+                        return
+                    state.shutdown_requested = action == "shutdown"
+                    state.shutdown_message = shutdown.request_power(action)
+                    state.touch()
+                    if self.path == "/power":
+                        self._send_text(render_dashboard(state), HTTPStatus.OK, "text/html; charset=utf-8")
+                        return
+                    self._send_json({"ok": True, "message": state.shutdown_message})
+                    return
+                if self.path in {"/api/brightness", "/brightness"}:
+                    try:
+                        brightness = int(fields.get("brightness", [""])[0])
+                    except ValueError:
+                        self._send_json({"ok": False, "message": "invalid brightness"}, HTTPStatus.BAD_REQUEST)
+                        return
+                    state.brightness = max(0, min(100, brightness))
+                    state.status_message = f"Brightness: {state.brightness}%"
+                    state.active_screen = "brightness"
+                    state.touch()
+                    if self.path == "/brightness":
+                        self._send_text(render_dashboard(state), HTTPStatus.OK, "text/html; charset=utf-8")
+                        return
+                    self._send_json({"ok": True, "brightness": state.brightness})
+                    return
                 if self.path in {"/api/button", "/button"}:
                     source = fields.get("source", [""])[0]
                     gesture = fields.get("gesture", [""])[0]
@@ -156,6 +184,16 @@ def render_dashboard(state: AppState) -> str:
         f"<span class=\"detail\">{item.detail}</span></li>"
         for item in hardware.diagnostics
     )
+    stats = state.system
+    uptime = _uptime_text(stats.uptime_seconds)
+    memory = _memory_text(stats.memory_available_mb, stats.memory_total_mb)
+    load = " ".join(
+        [
+            _load_text(stats.load_1m),
+            _load_text(stats.load_5m),
+            _load_text(stats.load_15m),
+        ]
+    )
     current_session = state.current_session
     if current_session is None:
         session_detail = "<p>No active recording.</p>"
@@ -176,6 +214,10 @@ def render_dashboard(state: AppState) -> str:
     )
     if not recent_sessions:
         recent_sessions = "<li>No saved sessions yet.</li>"
+    brightness_buttons = "\n".join(
+        f"<form method=\"post\" action=\"/brightness\"><input type=\"hidden\" name=\"brightness\" value=\"{level}\"><button type=\"submit\">{level}%</button></form>"
+        for level in state.brightness_levels
+    )
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -203,12 +245,16 @@ def render_dashboard(state: AppState) -> str:
 <body>
 <main>
   <h1>AxiomVox</h1>
-  <p>Device status shell. Recording and transcription are not implemented in M0.</p>
+  <p>Device status shell. Local sessions are available; transcription is not implemented yet.</p>
   <section class="panel grid">
     <div class="metric"><div class="label">Mode</div><div class="value">{state.mode}</div></div>
     <div class="metric"><div class="label">Screen</div><div class="value">{state.active_screen}</div></div>
     <div class="metric"><div class="label">Battery</div><div class="value">{battery}</div></div>
     <div class="metric"><div class="label">Web</div><div class="value">{'OK' if state.web_reachable else 'Starting'}</div></div>
+    <div class="metric"><div class="label">Uptime</div><div class="value">{uptime}</div></div>
+    <div class="metric"><div class="label">Memory</div><div class="value">{memory}</div></div>
+    <div class="metric"><div class="label">Load</div><div class="value">{load}</div></div>
+    <div class="metric"><div class="label">Brightness</div><div class="value">{state.brightness}%</div></div>
   </section>
   <section class="panel">
     <h2>Controls</h2>
@@ -227,6 +273,11 @@ def render_dashboard(state: AppState) -> str:
     <ul>{recent_sessions}</ul>
   </section>
   <section class="panel">
+    <h2>Settings</h2>
+    <h3>Brightness</h3>
+    <div class="actions">{brightness_buttons}</div>
+  </section>
+  <section class="panel">
     <h2>M0 Diagnostics</h2>
     <ul>{diagnostics}</ul>
   </section>
@@ -237,7 +288,10 @@ def render_dashboard(state: AppState) -> str:
   <section class="panel">
     <h2>Power</h2>
     <p>{state.shutdown_message}</p>
-    <form method="post" action="/shutdown"><button class="danger" type="submit">Shutdown</button></form>
+    <div class="actions">
+      <form method="post" action="/power"><input type="hidden" name="action" value="reboot"><button class="danger" type="submit">Reboot</button></form>
+      <form method="post" action="/power"><input type="hidden" name="action" value="shutdown"><button class="danger" type="submit">Shutdown</button></form>
+    </div>
   </section>
 </main>
 </body>
@@ -276,3 +330,29 @@ def _value_text(value: int | None) -> str:
     if value is None:
         return "--"
     return str(value)
+
+
+def _uptime_text(seconds: int | None) -> str:
+    if seconds is None:
+        return "--"
+    minutes = seconds // 60
+    hours = minutes // 60
+    days = hours // 24
+    if days:
+        return f"{days}d {hours % 24}h"
+    if hours:
+        return f"{hours}h {minutes % 60}m"
+    return f"{minutes}m"
+
+
+def _memory_text(available_mb: int | None, total_mb: int | None) -> str:
+    if available_mb is None or total_mb is None:
+        return "--"
+    used_mb = max(0, total_mb - available_mb)
+    return f"{used_mb}/{total_mb} MB"
+
+
+def _load_text(load: float | None) -> str:
+    if load is None:
+        return "--"
+    return f"{load:.2f}"

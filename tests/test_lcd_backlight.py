@@ -22,3 +22,14 @@ def test_lcd_render_enables_backlight_once(tmp_path) -> None:
 
     assert board.backlight == 80
     assert driver.backlight_enabled
+
+
+def test_lcd_set_brightness_clamps_value(tmp_path) -> None:
+    driver = WhisplayLcdDriver(runtime_path=tmp_path / "missing.py")
+    board = FakeBoard()
+    driver.board = board
+
+    driver.set_brightness(120)
+
+    assert board.backlight == 100
+    assert driver.backlight == 100
