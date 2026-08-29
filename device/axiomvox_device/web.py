@@ -3,8 +3,9 @@ from __future__ import annotations
 import json
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from threading import Thread
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, unquote
 
 from shared.axiomvox_shared import AppState
 
@@ -41,6 +42,7 @@ class StatusServer:
 
     def _handler(self) -> type[BaseHTTPRequestHandler]:
         state = self.state
+        config = self.config
         shutdown = self.shutdown
         controller = self.controller
 
@@ -62,6 +64,9 @@ class StatusServer:
                             "recent_sessions": state.to_dict()["recent_sessions"],
                         }
                     )
+                    return
+                if self.path.startswith("/sessions/"):
+                    self._send_session_file()
                     return
                 if self.path == "/" or self.path.startswith("/?"):
                     self._send_text(render_dashboard(state), HTTPStatus.OK, "text/html; charset=utf-8")
@@ -122,6 +127,20 @@ class StatusServer:
                 self.end_headers()
                 self.wfile.write(payload)
 
+            def _send_session_file(self) -> None:
+                path = _session_file_path(config.session_dir, self.path)
+                if path is None or not path.exists():
+                    self._send_text("not found\n", HTTPStatus.NOT_FOUND)
+                    return
+                payload = path.read_bytes()
+                content_type = "audio/wav" if path.name == "audio.wav" else "application/json"
+                self.send_response(HTTPStatus.OK)
+                self.send_header("content-type", content_type)
+                self.send_header("content-length", str(len(payload)))
+                self.send_header("content-disposition", f"attachment; filename={path.name}")
+                self.end_headers()
+                self.wfile.write(payload)
+
         return Handler
 
 
@@ -146,7 +165,13 @@ def render_dashboard(state: AppState) -> str:
             f"<p>Bookmarks: {len(current_session.bookmarks)}</p>"
         )
     recent_sessions = "\n".join(
-        f"<li><strong>{session.id}</strong><span class=\"detail\">{session.status}</span></li>"
+        f"<li><strong>{session.id}</strong>"
+        f"<span class=\"detail\">{session.status} | audio {session.audio_status}"
+        f" | {_duration_text(session.audio_duration_seconds)}"
+        f" | {_size_text(session.audio_size_bytes)}"
+        f" | rms {_value_text(session.audio_rms)}</span>"
+        f"<a href=\"/sessions/{session.id}/audio.wav\">audio.wav</a> | "
+        f"<a href=\"/sessions/{session.id}/metadata.json\">metadata.json</a></li>"
         for session in state.recent_sessions
     )
     if not recent_sessions:
@@ -218,3 +243,36 @@ def render_dashboard(state: AppState) -> str:
 </body>
 </html>
 """
+
+
+def _session_file_path(session_dir: Path, request_path: str) -> Path | None:
+    parts = [unquote(part) for part in request_path.split("/") if part]
+    if len(parts) != 3 or parts[0] != "sessions" or parts[2] not in {"audio.wav", "metadata.json"}:
+        return None
+    candidate = (session_dir / parts[1] / parts[2]).resolve()
+    root = session_dir.resolve()
+    try:
+        candidate.relative_to(root)
+    except ValueError:
+        return None
+    return candidate
+
+
+def _duration_text(duration: float | None) -> str:
+    if duration is None:
+        return "--s"
+    return f"{duration:.1f}s"
+
+
+def _size_text(size_bytes: int | None) -> str:
+    if size_bytes is None:
+        return "--"
+    if size_bytes < 1024:
+        return f"{size_bytes} B"
+    return f"{size_bytes / 1024:.0f} KB"
+
+
+def _value_text(value: int | None) -> str:
+    if value is None:
+        return "--"
+    return str(value)

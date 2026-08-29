@@ -10,6 +10,7 @@ from pathlib import Path
 from shared.axiomvox_shared import AppState
 
 from .buttons import PiSugarButtonPoller, WhisplayButtonPoller
+from .audio import validate_wav
 from .config import DeviceConfig
 from .controls import ApplianceController
 from .display import HdmiRenderer, WhisplayRenderer
@@ -29,6 +30,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--self-test", action="store_true", help="Run M1 diagnostics and exit")
     parser.add_argument("--no-lcd", action="store_true", help="Do not attempt Whisplay LCD hardware updates")
     parser.add_argument("--lcd-on", action="store_true", help="Turn on the Whisplay LCD backlight and exit")
+    parser.add_argument("--audio-self-test", type=Path, help="Validate an existing WAV file and exit")
     parser.add_argument("--status-file", type=Path)
     parser.add_argument("--session-dir", type=Path, default=Path("/var/lib/axiomvox/sessions"))
     parser.add_argument("--metadata-only", action="store_true", help="Do not launch ALSA capture")
@@ -57,7 +59,13 @@ def main(argv: list[str] | None = None) -> int:
     pollers = [WhisplayButtonPoller(probe, whisplay_board), PiSugarButtonPoller(probe)]
 
     state.hardware = probe.collect()
+    sessions.load_recent(state)
     state.touch()
+
+    if args.audio_self_test:
+        result = validate_wav(args.audio_self_test)
+        print(json.dumps(result.to_dict(), indent=2), file=sys.stdout)
+        return 0 if result.status == "ok" else 1
 
     if args.lcd_on:
         print(lcd.turn_on() if lcd is not None else "LCD disabled", file=sys.stdout)

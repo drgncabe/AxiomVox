@@ -8,6 +8,7 @@ from pathlib import Path
 
 from shared.axiomvox_shared import AppState, SessionSummary, utc_now_iso
 
+from .audio import validate_wav
 from .config import DeviceConfig
 
 
@@ -15,6 +16,22 @@ class SessionManager:
     def __init__(self, config: DeviceConfig) -> None:
         self.config = config
         self.capture_process: subprocess.Popen[bytes] | None = None
+
+    def load_recent(self, state: AppState, limit: int = 10) -> None:
+        if not self.config.session_dir.exists():
+            return
+
+        sessions = []
+        for metadata_path in sorted(self.config.session_dir.glob("*/metadata.json"), reverse=True):
+            try:
+                payload = json.loads(metadata_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            sessions.append(_session_from_metadata(payload, metadata_path))
+            if len(sessions) >= limit:
+                break
+
+        state.recent_sessions = sessions
 
     def start(self, state: AppState) -> str:
         if state.current_session is not None:
@@ -65,6 +82,7 @@ class SessionManager:
         session = state.current_session
         session.status = "complete"
         session.ended_at = utc_now_iso()
+        self.validate_session_audio(session)
         self._write_metadata(session)
         state.recent_sessions.insert(0, session)
         state.recent_sessions = state.recent_sessions[:10]
@@ -73,6 +91,22 @@ class SessionManager:
         state.status_message = f"Saved {session.id}"
         state.touch()
         return state.status_message
+
+    def validate_session_audio(self, session: SessionSummary) -> None:
+        if session.audio_path is None:
+            session.audio_status = "missing"
+            session.audio_detail = "session has no audio path"
+            return
+
+        result = validate_wav(Path(session.audio_path))
+        session.audio_status = result.status
+        session.audio_detail = result.detail
+        session.audio_duration_seconds = result.duration_seconds
+        session.audio_size_bytes = result.size_bytes
+        session.audio_sample_rate = result.sample_rate
+        session.audio_channels = result.channels
+        session.audio_peak = result.peak
+        session.audio_rms = result.rms
 
     def _start_capture(self, audio_path: Path) -> None:
         if not self.config.capture_enabled:
@@ -120,6 +154,14 @@ class SessionManager:
             "bookmarks": session.bookmarks,
             "audio_capture": session.audio_capture,
             "audio_format": "wav pcm_s16le 16000hz mono",
+            "audio_status": session.audio_status,
+            "audio_detail": session.audio_detail,
+            "audio_duration_seconds": session.audio_duration_seconds,
+            "audio_size_bytes": session.audio_size_bytes,
+            "audio_sample_rate": session.audio_sample_rate,
+            "audio_channels": session.audio_channels,
+            "audio_peak": session.audio_peak,
+            "audio_rms": session.audio_rms,
             "transcription": "not implemented",
         }
         Path(session.metadata_path).write_text(json.dumps(payload, indent=2), encoding="utf-8")
@@ -128,3 +170,50 @@ class SessionManager:
 def _session_id() -> str:
     stamp = utc_now_iso().replace("-", "").replace(":", "").replace("+00:00", "Z")
     return f"{stamp}-{uuid4().hex[:6]}"
+
+
+def _session_from_metadata(payload: dict[str, object], metadata_path: Path) -> SessionSummary:
+    return SessionSummary(
+        id=str(payload.get("id") or metadata_path.parent.name),
+        status=str(payload.get("status") or "unknown"),
+        started_at=str(payload.get("started_at") or ""),
+        ended_at=_string_or_none(payload.get("ended_at")),
+        audio_path=_string_or_none(payload.get("audio_path")),
+        metadata_path=str(metadata_path),
+        audio_capture=str(payload.get("audio_capture") or "metadata-only"),
+        audio_status=str(payload.get("audio_status") or "unknown"),
+        audio_detail=str(payload.get("audio_detail") or ""),
+        audio_duration_seconds=_float_or_none(payload.get("audio_duration_seconds")),
+        audio_size_bytes=_int_or_none(payload.get("audio_size_bytes")),
+        audio_sample_rate=_int_or_none(payload.get("audio_sample_rate")),
+        audio_channels=_int_or_none(payload.get("audio_channels")),
+        audio_peak=_int_or_none(payload.get("audio_peak")),
+        audio_rms=_int_or_none(payload.get("audio_rms")),
+        bookmarks=[str(item) for item in payload.get("bookmarks", []) if isinstance(item, str)]
+        if isinstance(payload.get("bookmarks"), list)
+        else [],
+    )
+
+
+def _string_or_none(value: object) -> str | None:
+    if value is None:
+        return None
+    return str(value)
+
+
+def _int_or_none(value: object) -> int | None:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _float_or_none(value: object) -> float | None:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None

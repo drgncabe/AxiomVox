@@ -5,7 +5,8 @@ AxiomVox is an appliance-style live transcription device and companion server.
 M0 is focused on the device foundation: boot reliably on the target hardware,
 validate attached peripherals, present status on the Whisplay LCD and HDMI, and
 expose a small local web dashboard with graceful shutdown. M1 adds the appliance
-loop and M2 adds local recording-session metadata and initial WAV capture.
+loop, M2 adds local recording-session metadata and initial WAV capture, and M3
+adds WAV validation/audio confidence checks.
 
 ## M0 Target
 
@@ -68,6 +69,7 @@ repository path.
 - [M0 Acceptance](docs/m0-acceptance.md)
 - [M1 Appliance Loop](docs/m1-appliance-loop.md)
 - [M2 Local Sessions](docs/m2-local-sessions.md)
+- [M3 Audio Confidence](docs/m3-audio-confidence.md)
 - [AVTP/1 Protocol](docs/avtp-1.md)
 - [OS and Installation](docs/os-and-install.md)
 

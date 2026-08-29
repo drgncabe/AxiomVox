@@ -1,5 +1,5 @@
 from shared.axiomvox_shared import AppState, HardwareStatus, ServiceStatus, SessionSummary
-from device.axiomvox_device.web import render_dashboard
+from device.axiomvox_device.web import _session_file_path, render_dashboard
 
 
 def test_dashboard_documents_future_sections_without_implementing_them() -> None:
@@ -33,6 +33,10 @@ def test_dashboard_shows_active_and_recent_sessions() -> None:
                 id="20260828T160000Z",
                 status="complete",
                 started_at="2026-08-28T16:00:00+00:00",
+                audio_status="ok",
+                audio_duration_seconds=3.2,
+                audio_size_bytes=50000,
+                audio_rms=1200,
             )
         ],
     )
@@ -42,3 +46,12 @@ def test_dashboard_shows_active_and_recent_sessions() -> None:
     assert "20260828T170000Z" in html
     assert "Bookmarks: 1" in html
     assert "20260828T160000Z" in html
+    assert "audio ok" in html
+    assert "3.2s" in html
+    assert "/sessions/20260828T160000Z/audio.wav" in html
+
+
+def test_session_file_path_stays_under_session_dir(tmp_path) -> None:
+    assert _session_file_path(tmp_path, "/sessions/abc/audio.wav") == tmp_path.resolve() / "abc" / "audio.wav"
+    assert _session_file_path(tmp_path, "/sessions/../metadata.json") is None
+    assert _session_file_path(tmp_path, "/sessions/abc/other.txt") is None

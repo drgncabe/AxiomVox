@@ -42,6 +42,16 @@ class WhisplayRenderer:
                     "Long: stop",
                 ]
             )
+        if state.recent_sessions:
+            recent = state.recent_sessions[0]
+            return "\n".join(
+                [
+                    "AxiomVox READY",
+                    f"BAT {battery}  LAST {recent.audio_status.upper()}",
+                    f"{_duration_text(recent.audio_duration_seconds)}  {_size_text(recent.audio_size_bytes)}",
+                    "Short: record",
+                ]
+            )
         return "\n".join(
             [
                 "AxiomVox READY",
@@ -101,3 +111,17 @@ def _core_hardware_ready(state: AppState) -> bool:
             hardware.hdmi_detected,
         ]
     )
+
+
+def _duration_text(duration: float | None) -> str:
+    if duration is None:
+        return "--s"
+    return f"{duration:.1f}s"
+
+
+def _size_text(size_bytes: int | None) -> str:
+    if size_bytes is None:
+        return "--"
+    if size_bytes < 1024:
+        return f"{size_bytes}B"
+    return f"{size_bytes / 1024:.0f}K"

@@ -38,6 +38,14 @@ class SessionSummary:
     audio_path: str | None = None
     metadata_path: str | None = None
     audio_capture: str = "metadata-only"
+    audio_status: str = "pending"
+    audio_detail: str = ""
+    audio_duration_seconds: float | None = None
+    audio_size_bytes: int | None = None
+    audio_sample_rate: int | None = None
+    audio_channels: int | None = None
+    audio_peak: int | None = None
+    audio_rms: int | None = None
     bookmarks: list[str] = field(default_factory=list)
 
 
