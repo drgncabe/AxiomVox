@@ -16,5 +16,5 @@ class DeviceConfig:
     capture_enabled: bool = True
     capture_device: str = "plughw:whisplaysound,0"
     capture_format: str = "S32_LE"
-    capture_rate: int = 16000
+    capture_rate: int = 48000
     capture_channels: int = 2

@@ -59,9 +59,9 @@ def validate_wav(path: Path) -> AudioValidation:
     elif sample_width not in {2, 4}:
         status = "warn"
         detail = f"expected 16-bit or 32-bit PCM, got {sample_width * 8}-bit samples"
-    elif sample_rate != 16000 or channels != 2:
+    elif sample_rate != 48000 or channels != 2:
         status = "warn"
-        detail = f"expected 16000 Hz stereo, got {sample_rate} Hz / {channels} channel(s)"
+        detail = f"expected 48000 Hz stereo, got {sample_rate} Hz / {channels} channel(s)"
     elif (rms or 0) < 20 and (peak or 0) < 200:
         status = "silent"
         detail = "audio looks extremely quiet"

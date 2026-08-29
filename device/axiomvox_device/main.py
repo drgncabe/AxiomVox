@@ -36,7 +36,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--metadata-only", action="store_true", help="Do not launch ALSA capture")
     parser.add_argument("--capture-device", default="plughw:whisplaysound,0")
     parser.add_argument("--capture-format", default="S32_LE")
-    parser.add_argument("--capture-rate", type=int, default=16000)
+    parser.add_argument("--capture-rate", type=int, default=48000)
     parser.add_argument("--capture-channels", type=int, default=2)
     return parser
 

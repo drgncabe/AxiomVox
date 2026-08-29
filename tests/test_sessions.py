@@ -65,8 +65,8 @@ def test_session_manager_validates_saved_wav_and_loads_recent(tmp_path: Path) ->
     with wave.open(str(audio_path), "wb") as wav:
         wav.setnchannels(2)
         wav.setsampwidth(4)
-        wav.setframerate(16000)
-        wav.writeframes(b"\x00\x00\x01\x10" * 3200)
+        wav.setframerate(48000)
+        wav.writeframes(b"\x00\x00\x01\x10" * 9600)
     manager.stop(state)
 
     saved = state.recent_sessions[0]

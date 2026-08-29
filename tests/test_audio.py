@@ -11,9 +11,9 @@ def test_validate_wav_reports_usable_audio(tmp_path: Path) -> None:
     with wave.open(str(path), "wb") as wav:
         wav.setnchannels(2)
         wav.setsampwidth(4)
-        wav.setframerate(16000)
+        wav.setframerate(48000)
         frames = bytearray()
-        for idx in range(1600):
+        for idx in range(4800):
             sample = round(12000 * math.sin(idx / 8)) << 16
             frames.extend(struct.pack("<i", sample))
             frames.extend(struct.pack("<i", sample))
@@ -22,14 +22,14 @@ def test_validate_wav_reports_usable_audio(tmp_path: Path) -> None:
     result = validate_wav(path)
 
     assert result.status == "ok"
-    assert result.sample_rate == 16000
+    assert result.sample_rate == 48000
     assert result.channels == 2
     assert result.duration_seconds == 0.1
     assert result.peak and result.peak > 1000
     assert result.rms and result.rms > 1000
 
 
-def test_validate_wav_warns_on_legacy_mono_format(tmp_path: Path) -> None:
+def test_validate_wav_warns_on_legacy_16khz_mono_format(tmp_path: Path) -> None:
     path = tmp_path / "audio.wav"
     with wave.open(str(path), "wb") as wav:
         wav.setnchannels(1)
@@ -40,7 +40,7 @@ def test_validate_wav_warns_on_legacy_mono_format(tmp_path: Path) -> None:
     result = validate_wav(path)
 
     assert result.status == "warn"
-    assert "expected 16000 Hz stereo" in result.detail
+    assert "expected 48000 Hz stereo" in result.detail
 
 
 def test_validate_wav_reports_silent_audio(tmp_path: Path) -> None:

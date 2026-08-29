@@ -14,7 +14,7 @@ STATUS_FILE="${AXIOMVOX_STATUS_FILE:-/run/axiomvox/status.json}"
 SESSION_DIR="${AXIOMVOX_SESSION_DIR:-/var/lib/axiomvox/sessions}"
 CAPTURE_DEVICE="${AXIOMVOX_CAPTURE_DEVICE:-plughw:whisplaysound,0}"
 CAPTURE_FORMAT="${AXIOMVOX_CAPTURE_FORMAT:-S32_LE}"
-CAPTURE_RATE="${AXIOMVOX_CAPTURE_RATE:-16000}"
+CAPTURE_RATE="${AXIOMVOX_CAPTURE_RATE:-48000}"
 CAPTURE_CHANNELS="${AXIOMVOX_CAPTURE_CHANNELS:-2}"
 
 require_root() {
@@ -75,7 +75,7 @@ install_service() {
     -e "s|--session-dir /var/lib/axiomvox/sessions|--session-dir ${SESSION_DIR}|g" \
     -e "s|--capture-device plughw:whisplaysound,0|--capture-device ${CAPTURE_DEVICE}|g" \
     -e "s|--capture-format S32_LE|--capture-format ${CAPTURE_FORMAT}|g" \
-    -e "s|--capture-rate 16000|--capture-rate ${CAPTURE_RATE}|g" \
+    -e "s|--capture-rate 48000|--capture-rate ${CAPTURE_RATE}|g" \
     -e "s|--capture-channels 2|--capture-channels ${CAPTURE_CHANNELS}|g" \
     -e "s|User=pi|User=${APP_USER}|g" \
     -e "s|Group=pi|Group=${APP_GROUP}|g" \

@@ -27,7 +27,7 @@ Successful output includes:
 {
   "status": "ok",
   "detail": "audio looks usable",
-  "sample_rate": 16000,
+  "sample_rate": 48000,
   "channels": 2
 }
 ```
@@ -48,11 +48,11 @@ Successful output includes:
 Device capture currently targets:
 
 ```text
-arecord -q -D plughw:whisplaysound,0 -f S32_LE -r 16000 -c 2 -t wav audio.wav
+arecord -q -D plughw:whisplaysound,0 -f S32_LE -r 48000 -c 2 -t wav audio.wav
 ```
 
-This is intentionally conservative for the Raspberry Pi Zero W and suitable for
-future speech-to-text pipelines.
+This keeps local capture close to the Whisplay HAT's native clock. Future
+speech-to-text pipelines can downsample from this source when needed.
 
 The Whisplay sound card should be addressed by its stable ALSA card name
 instead of whichever capture device happens to be the system default. If audio
@@ -60,12 +60,12 @@ sounds distorted, first compare AxiomVox output with the vendor-style manual
 recording command:
 
 ```bash
-arecord -D plughw:whisplaysound,0 -f S32_LE -r 16000 -c 2 -d 10 /tmp/whisplay-test.wav
+arecord -D plughw:whisplaysound,0 -f S32_LE -r 48000 -c 2 -d 10 /tmp/whisplay-test.wav
 aplay -D plughw:whisplaysound,0 /tmp/whisplay-test.wav
 ```
 
 The service can still be tuned without code changes:
 
 ```bash
-axiomvox-device --capture-device plughw:whisplaysound,0 --capture-format S32_LE --capture-rate 16000 --capture-channels 2
+axiomvox-device --capture-device plughw:whisplaysound,0 --capture-format S32_LE --capture-rate 48000 --capture-channels 2
 ```
