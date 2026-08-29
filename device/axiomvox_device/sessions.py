@@ -37,7 +37,8 @@ class SessionManager:
         state.mode = "RECORDING"
         state.status_message = f"Recording {session_id}"
         self._start_capture(audio_path)
-        self._write_metadata(session, capture_note=self._capture_note())
+        session.audio_capture = self._capture_note()
+        self._write_metadata(session)
         state.touch()
         return state.status_message
 
@@ -48,7 +49,8 @@ class SessionManager:
         bookmark = utc_now_iso()
         state.current_session.bookmarks.append(bookmark)
         state.status_message = f"Bookmark {len(state.current_session.bookmarks)} saved"
-        self._write_metadata(state.current_session, capture_note=self._capture_note())
+        state.current_session.audio_capture = self._capture_note()
+        self._write_metadata(state.current_session)
         state.touch()
         return state.status_message
 
@@ -63,7 +65,7 @@ class SessionManager:
         session = state.current_session
         session.status = "complete"
         session.ended_at = utc_now_iso()
-        self._write_metadata(session, capture_note=self._capture_note())
+        self._write_metadata(session)
         state.recent_sessions.insert(0, session)
         state.recent_sessions = state.recent_sessions[:10]
         state.current_session = None
@@ -106,7 +108,7 @@ class SessionManager:
         return "arecord-exited"
 
     @staticmethod
-    def _write_metadata(session: SessionSummary, capture_note: str) -> None:
+    def _write_metadata(session: SessionSummary) -> None:
         if session.metadata_path is None:
             return
         payload = {
@@ -116,7 +118,7 @@ class SessionManager:
             "ended_at": session.ended_at,
             "audio_path": session.audio_path,
             "bookmarks": session.bookmarks,
-            "audio_capture": capture_note,
+            "audio_capture": session.audio_capture,
             "audio_format": "wav pcm_s16le 16000hz mono",
             "transcription": "not implemented",
         }

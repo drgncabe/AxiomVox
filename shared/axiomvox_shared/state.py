@@ -37,6 +37,7 @@ class SessionSummary:
     ended_at: str | None = None
     audio_path: str | None = None
     metadata_path: str | None = None
+    audio_capture: str = "metadata-only"
     bookmarks: list[str] = field(default_factory=list)
 
 
