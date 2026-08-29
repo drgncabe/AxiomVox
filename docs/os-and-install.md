@@ -104,6 +104,9 @@ The scripts can be adjusted with environment variables:
 | `AXIOMVOX_PISUGAR_AUTH_PASSWORD` | `admin` |
 | `AXIOMVOX_INSTALL_MODE` | prompts when unset |
 
+The systemd unit creates `/run/axiomvox` with `RuntimeDirectory=axiomvox` so the
+non-root device service can publish its status file after every boot.
+
 ## Board Profiles
 
 | Board | OS | AxiomVox role |

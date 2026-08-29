@@ -186,8 +186,19 @@ def _publish_status(
     if lcd is not None:
         print(lcd.render(state), file=sys.stdout, flush=True)
     if status_file:
+        _write_status_file(status_file, state)
+
+
+def _write_status_file(status_file: Path, state: AppState) -> None:
+    try:
         status_file.parent.mkdir(parents=True, exist_ok=True)
         status_file.write_text(json.dumps(state.to_dict(), indent=2), encoding="utf-8")
+    except (OSError, ValueError) as exc:
+        print(
+            f"Status file unavailable: {status_file}: {exc}",
+            file=sys.stderr,
+            flush=True,
+        )
 
 
 def _run_self_test(
