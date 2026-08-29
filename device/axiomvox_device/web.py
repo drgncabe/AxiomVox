@@ -6,13 +6,14 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from threading import Thread
 from typing import TYPE_CHECKING
-from urllib.parse import parse_qs, unquote
+from urllib.parse import parse_qs, unquote, urlparse
 
 from shared.axiomvox_shared import AppState
 
 from .config import DeviceConfig
 from .controls import ApplianceController
 from .events import ButtonEvent
+from .logs import DEFAULT_LOG_LINES, LogReader, clamp_log_lines
 from .shutdown import ShutdownController
 
 if TYPE_CHECKING:
@@ -52,19 +53,23 @@ class StatusServer:
         shutdown = self.shutdown
         controller = self.controller
         lcd = self.lcd
+        log_reader = LogReader(config)
 
         class Handler(BaseHTTPRequestHandler):
             def do_GET(self) -> None:
-                if self.path == "/healthz":
+                parsed = urlparse(self.path)
+                path = parsed.path
+                query = parse_qs(parsed.query)
+                if path == "/healthz":
                     self._send_text("ok\n", HTTPStatus.OK)
                     return
-                if self.path == "/api/status":
+                if path == "/api/status":
                     self._send_json(state.to_dict())
                     return
-                if self.path == "/api/diagnostics":
+                if path == "/api/diagnostics":
                     self._send_json({"diagnostics": state.to_dict()["hardware"]["diagnostics"]})
                     return
-                if self.path == "/api/sessions":
+                if path == "/api/sessions":
                     self._send_json(
                         {
                             "current_session": state.to_dict()["current_session"],
@@ -72,16 +77,28 @@ class StatusServer:
                         }
                     )
                     return
-                if self.path.startswith("/sessions/"):
+                if path == "/api/logs":
+                    self._send_json(
+                        log_reader.read(
+                            kind=query.get("kind", ["axiomvox"])[0],
+                            lines=_int_query(query, "lines", DEFAULT_LOG_LINES),
+                            query=query.get("q", [""])[0],
+                        ).to_dict()
+                    )
+                    return
+                if path.startswith("/sessions/"):
                     self._send_session_file()
                     return
-                if self.path == "/settings/display":
+                if path == "/settings/display":
                     self._send_text(render_display_settings(state), HTTPStatus.OK, "text/html; charset=utf-8")
                     return
-                if self.path == "/settings/power":
+                if path == "/settings/power":
                     self._send_text(render_power_settings(state), HTTPStatus.OK, "text/html; charset=utf-8")
                     return
-                if self.path == "/" or self.path.startswith("/?"):
+                if path == "/settings/logs":
+                    self._send_text(render_log_settings(), HTTPStatus.OK, "text/html; charset=utf-8")
+                    return
+                if path == "/":
                     self._send_text(render_dashboard(state), HTTPStatus.OK, "text/html; charset=utf-8")
                     return
                 self._send_text("not found\n", HTTPStatus.NOT_FOUND)
@@ -304,6 +321,7 @@ def render_dashboard(state: AppState) -> str:
     <nav class="navlinks">
       <a href="/settings/display">Display settings</a>
       <a href="/settings/power">Power settings</a>
+      <a href="/settings/logs">Logs</a>
     </nav>
   </section>
   <section class="panel">
@@ -369,6 +387,77 @@ def render_power_settings(state: AppState) -> str:
     )
 
 
+def render_log_settings() -> str:
+    return _settings_page(
+        "Logs",
+        f"""
+  <section class="panel">
+    <form id="logControls" class="log-controls">
+      <label>Log
+        <select id="kind" name="kind">
+          <option value="axiomvox">AxiomVox service</option>
+          <option value="system">System</option>
+        </select>
+      </label>
+      <label>Search
+        <input id="query" name="q" type="search" placeholder="filter text">
+      </label>
+      <label>Lines
+        <input id="lines" name="lines" type="number" min="20" max="1000" value="{DEFAULT_LOG_LINES}">
+      </label>
+      <label class="watch"><input id="watch" type="checkbox" checked> Watch</label>
+      <button type="submit">Search</button>
+    </form>
+    <p id="logStatus">Loading logs...</p>
+    <pre id="logOutput" class="logs" aria-live="polite"></pre>
+  </section>
+  <script>
+    const form = document.getElementById('logControls');
+    const statusEl = document.getElementById('logStatus');
+    const outputEl = document.getElementById('logOutput');
+    const kindEl = document.getElementById('kind');
+    const queryEl = document.getElementById('query');
+    const linesEl = document.getElementById('lines');
+    const watchEl = document.getElementById('watch');
+
+    async function loadLogs() {{
+      const params = new URLSearchParams({{
+        kind: kindEl.value,
+        q: queryEl.value,
+        lines: linesEl.value
+      }});
+      try {{
+        const response = await fetch('/api/logs?' + params.toString(), {{ cache: 'no-store' }});
+        const data = await response.json();
+        outputEl.textContent = data.text || '';
+        statusEl.textContent = data.ok
+          ? `${{data.kind}} logs: ${{data.line_count}} matching lines`
+          : `${{data.kind}} logs unavailable: ${{data.message}}`;
+        if (watchEl.checked) {{
+          outputEl.scrollTop = outputEl.scrollHeight;
+        }}
+      }} catch (error) {{
+        statusEl.textContent = 'Log refresh failed: ' + error;
+      }}
+    }}
+
+    form.addEventListener('submit', (event) => {{
+      event.preventDefault();
+      loadLogs();
+    }});
+    kindEl.addEventListener('change', loadLogs);
+    watchEl.addEventListener('change', loadLogs);
+    setInterval(() => {{
+      if (watchEl.checked) {{
+        loadLogs();
+      }}
+    }}, 2000);
+    loadLogs();
+  </script>
+""",
+    )
+
+
 def _settings_page(title: str, body: str) -> str:
     return f"""<!doctype html>
 <html lang="en">
@@ -382,6 +471,11 @@ def _settings_page(title: str, body: str) -> str:
     section, nav {{ margin-top: 1.25rem; }}
     .panel {{ background: white; border: 1px solid #d8dee8; border-radius: 8px; padding: 1rem; }}
     .actions {{ display: flex; flex-wrap: wrap; gap: .5rem; }}
+    .log-controls {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .75rem; align-items: end; }}
+    label {{ display: grid; gap: .25rem; color: #536471; font-size: .9rem; font-weight: 700; }}
+    input, select {{ border: 1px solid #aeb8c6; border-radius: 6px; padding: .65rem; font: inherit; }}
+    .watch {{ display: flex; gap: .5rem; align-items: center; }}
+    .logs {{ min-height: 24rem; max-height: 65vh; overflow: auto; white-space: pre-wrap; background: #111827; color: #f9fafb; border-radius: 6px; padding: 1rem; font-size: .85rem; line-height: 1.4; }}
     button {{ border: 0; border-radius: 6px; background: #155c85; color: white; padding: .7rem 1rem; font-weight: 700; }}
     .danger {{ background: #a83232; }}
     a {{ color: #155c85; }}
@@ -409,6 +503,13 @@ def _session_file_path(session_dir: Path, request_path: str) -> Path | None:
     except ValueError:
         return None
     return candidate
+
+
+def _int_query(query: dict[str, list[str]], name: str, default: int) -> int:
+    try:
+        return clamp_log_lines(int(query.get(name, [str(default)])[0]))
+    except ValueError:
+        return default
 
 
 def _duration_text(duration: float | None) -> str:

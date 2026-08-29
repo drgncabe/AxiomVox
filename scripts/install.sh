@@ -75,7 +75,7 @@ install_packages() {
 }
 
 configure_user_groups() {
-  for group in audio video input i2c gpio spi; do
+  for group in audio video input i2c gpio spi adm systemd-journal; do
     if getent group "${group}" >/dev/null 2>&1; then
       usermod -aG "${group}" "${APP_USER}"
     fi
@@ -166,6 +166,7 @@ install_service() {
     -e "s|WorkingDirectory=/opt/axiomvox|WorkingDirectory=${INSTALL_DIR}|g" \
     -e "s|ExecStart=/opt/axiomvox/.venv/bin/axiomvox-device|ExecStart=${INSTALL_DIR}/.venv/bin/axiomvox-device|g" \
     -e "s|--port 8080|--port ${WEB_PORT}|g" \
+    -e "s|--service-name axiomvox.service|--service-name ${SERVICE_NAME}|g" \
     -e "s|--status-file /run/axiomvox/status.json|--status-file ${STATUS_FILE}|g" \
     -e "s|--session-dir /var/lib/axiomvox/sessions|--session-dir ${SESSION_DIR}|g" \
     -e "s|--capture-device plughw:whisplaysound,0|--capture-device ${CAPTURE_DEVICE}|g" \

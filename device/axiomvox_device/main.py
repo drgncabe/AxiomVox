@@ -26,6 +26,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run the AxiomVox M0 device app")
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8080)
+    parser.add_argument("--service-name", default="axiomvox.service")
     parser.add_argument("--allow-shutdown", action="store_true")
     parser.add_argument("--simulate-hardware", action="store_true")
     parser.add_argument("--once", action="store_true", help="Probe and render status once")
@@ -49,6 +50,7 @@ def main(argv: list[str] | None = None) -> int:
     config = DeviceConfig(
         host=args.host,
         port=args.port,
+        service_name=args.service_name,
         allow_shutdown=args.allow_shutdown,
         simulate_hardware=args.simulate_hardware,
         status_file=args.status_file,

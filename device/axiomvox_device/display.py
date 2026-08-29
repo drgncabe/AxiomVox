@@ -53,6 +53,15 @@ class WhisplayRenderer:
                     "Long: back",
                 ]
             )
+        if state.active_screen == "logs":
+            return "\n".join(
+                [
+                    "AxiomVox LOGS",
+                    "Use web console",
+                    "/settings/logs",
+                    "Long: back",
+                ]
+            )
         if state.active_screen == "power":
             selected = state.power_items[state.power_index]
             return "\n".join(

@@ -8,6 +8,7 @@ from pathlib import Path
 class DeviceConfig:
     host: str = "0.0.0.0"
     port: int = 8080
+    service_name: str = "axiomvox.service"
     shutdown_command: tuple[str, ...] = ("sudo", "-n", "/usr/bin/systemctl", "poweroff")
     reboot_command: tuple[str, ...] = ("sudo", "-n", "/usr/bin/systemctl", "reboot")
     allow_shutdown: bool = False

@@ -62,3 +62,10 @@ def test_whisplay_display_settings_screen_shows_sleep_timeout() -> None:
     assert "DISPLAY" in rendered
     assert "Brightness 60%" in rendered
     assert "Sleep 30s" in rendered
+
+
+def test_whisplay_logs_screen_points_to_web_console() -> None:
+    rendered = WhisplayRenderer().render(AppState(active_screen="logs"))
+
+    assert "AxiomVox LOGS" in rendered
+    assert "/settings/logs" in rendered

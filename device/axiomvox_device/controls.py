@@ -89,7 +89,7 @@ class ApplianceController:
             state.active_screen = "settings_menu"
             state.status_message = "Menu"
             return
-        if state.active_screen in {"status", "settings", "sessions", "reboot_confirm", "shutdown_confirm"}:
+        if state.active_screen in {"status", "settings", "sessions", "logs", "reboot_confirm", "shutdown_confirm"}:
             state.active_screen = "menu"
             state.status_message = "Menu"
             return
@@ -130,6 +130,10 @@ class ApplianceController:
             state.power_index = 0
             state.status_message = f"Power: {state.power_items[state.power_index]}"
             return "power"
+        if item == "Logs":
+            state.active_screen = "logs"
+            state.status_message = "Logs available on web"
+            return "logs"
         return "unknown"
 
     def select_power_item(self, state: AppState) -> str:

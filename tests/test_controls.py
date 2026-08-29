@@ -79,6 +79,17 @@ def test_settings_menu_opens_display_settings() -> None:
     assert state.status_message == "Brightness: 80%"
 
 
+def test_settings_menu_opens_logs_page() -> None:
+    state = AppState(active_screen="settings_menu")
+    state.settings_index = state.settings_items.index("Logs")
+
+    result = ApplianceController().select_settings_item(state)
+
+    assert result == "logs"
+    assert state.active_screen == "logs"
+    assert state.status_message == "Logs available on web"
+
+
 def test_power_menu_cycles_and_selects_reboot_confirmation() -> None:
     state = AppState(active_screen="power")
 

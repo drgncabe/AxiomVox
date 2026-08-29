@@ -74,7 +74,7 @@ class AppState:
         default_factory=lambda: ["Status", "Settings", "Sessions", "Exit"]
     )
     menu_index: int = 0
-    settings_items: list[str] = field(default_factory=lambda: ["Display", "Power", "Back"])
+    settings_items: list[str] = field(default_factory=lambda: ["Display", "Power", "Logs", "Back"])
     settings_index: int = 0
     power_items: list[str] = field(default_factory=lambda: ["Shutdown", "Reboot", "Back"])
     power_index: int = 0

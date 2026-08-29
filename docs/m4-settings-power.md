@@ -28,6 +28,7 @@ Settings menu:
 ```text
 Display
 Power
+Logs
 Back
 ```
 

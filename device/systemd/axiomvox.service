@@ -6,7 +6,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=/opt/axiomvox
-ExecStart=/opt/axiomvox/.venv/bin/axiomvox-device --host 0.0.0.0 --port 8080 --allow-shutdown --status-file /run/axiomvox/status.json --session-dir /var/lib/axiomvox/sessions --capture-device plughw:whisplaysound,0 --capture-format S32_LE --capture-rate 48000 --capture-channels 2 --display-sleep-timeout 300
+ExecStart=/opt/axiomvox/.venv/bin/axiomvox-device --host 0.0.0.0 --port 8080 --service-name axiomvox.service --allow-shutdown --status-file /run/axiomvox/status.json --session-dir /var/lib/axiomvox/sessions --capture-device plughw:whisplaysound,0 --capture-format S32_LE --capture-rate 48000 --capture-channels 2 --display-sleep-timeout 300
 Restart=on-failure
 RestartSec=5
 User=pi

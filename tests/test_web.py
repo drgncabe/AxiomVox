@@ -1,5 +1,11 @@
 from shared.axiomvox_shared import AppState, HardwareStatus, ServiceStatus, SessionSummary, SystemStats
-from device.axiomvox_device.web import _session_file_path, render_dashboard, render_display_settings, render_power_settings
+from device.axiomvox_device.web import (
+    _session_file_path,
+    render_dashboard,
+    render_display_settings,
+    render_log_settings,
+    render_power_settings,
+)
 
 
 def test_dashboard_documents_future_sections_without_implementing_them() -> None:
@@ -22,6 +28,7 @@ def test_dashboard_documents_future_sections_without_implementing_them() -> None
     assert "Brightness" in html
     assert "/settings/display" in html
     assert "/settings/power" in html
+    assert "/settings/logs" in html
     assert "<span class=\"detail\">available</span>" in html
 
 
@@ -41,6 +48,16 @@ def test_power_settings_page_shows_power_actions() -> None:
     assert "Power Settings" in html
     assert "Reboot" in html
     assert "Shutdown" in html
+
+
+def test_log_settings_page_shows_search_and_watch_controls() -> None:
+    html = render_log_settings()
+
+    assert "AxiomVox service" in html
+    assert "System" in html
+    assert "/api/logs" in html
+    assert "Search" in html
+    assert "Watch" in html
 
 
 def test_dashboard_shows_active_and_recent_sessions() -> None:
