@@ -278,7 +278,9 @@ def render_dashboard(state: AppState) -> str:
     )
     stats = state.system
     uptime = _uptime_text(stats.uptime_seconds)
+    cpu = _percent_text(stats.cpu_used_percent)
     memory = _memory_text(stats.memory_available_mb, stats.memory_total_mb)
+    memory_percent = _percent_text(stats.memory_used_percent)
     load = " ".join(
         [
             _load_text(stats.load_1m),
@@ -319,6 +321,8 @@ def render_dashboard(state: AppState) -> str:
     .panel {{ background: white; border: 1px solid #d8dee8; border-radius: 8px; padding: 1rem; }}
     .grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .75rem; }}
     .metric {{ background: #eef4f8; border-radius: 6px; padding: .75rem; }}
+    .charts {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }}
+    canvas {{ width: 100%; height: 120px; border: 1px solid #d8dee8; border-radius: 6px; background: #f8fafc; }}
     .label {{ color: #536471; font-size: .85rem; }}
     .value {{ font-size: 1.4rem; font-weight: 700; }}
     .actions {{ display: flex; flex-wrap: wrap; gap: .5rem; }}
@@ -341,9 +345,24 @@ def render_dashboard(state: AppState) -> str:
     <div class="metric"><div class="label">Battery</div><div class="value">{battery}</div></div>
     <div class="metric"><div class="label">Web</div><div class="value">{'OK' if state.web_reachable else 'Starting'}</div></div>
     <div class="metric"><div class="label">Uptime</div><div class="value">{uptime}</div></div>
+    <div class="metric"><div class="label">CPU</div><div class="value">{cpu}</div></div>
     <div class="metric"><div class="label">Memory</div><div class="value">{memory}</div></div>
+    <div class="metric"><div class="label">RAM</div><div class="value">{memory_percent}</div></div>
     <div class="metric"><div class="label">Load</div><div class="value">{load}</div></div>
     <div class="metric"><div class="label">Brightness</div><div class="value">{state.brightness}%</div></div>
+  </section>
+  <section class="panel">
+    <h2>System Graphs</h2>
+    <div class="charts">
+      <div>
+        <div class="label">CPU usage</div>
+        <canvas id="cpuChart" width="380" height="120"></canvas>
+      </div>
+      <div>
+        <div class="label">RAM usage</div>
+        <canvas id="ramChart" width="380" height="120"></canvas>
+      </div>
+    </div>
   </section>
   <section class="panel">
     <h2>Controls</h2>
@@ -380,6 +399,63 @@ def render_dashboard(state: AppState) -> str:
     <nav>Sessions · Device · Transcription · Settings · Advanced · Development</nav>
   </section>
 </main>
+<script>
+  const cpuChart = document.getElementById('cpuChart');
+  const ramChart = document.getElementById('ramChart');
+
+  function drawChart(canvas, values, color) {{
+    const context = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    context.clearRect(0, 0, width, height);
+    context.fillStyle = '#f8fafc';
+    context.fillRect(0, 0, width, height);
+    context.strokeStyle = '#d8dee8';
+    context.lineWidth = 1;
+    for (let idx = 0; idx <= 4; idx += 1) {{
+      const y = Math.round((height - 1) * idx / 4);
+      context.beginPath();
+      context.moveTo(0, y);
+      context.lineTo(width, y);
+      context.stroke();
+    }}
+    const points = values.filter((value) => Number.isFinite(value));
+    if (points.length === 0) {{
+      context.fillStyle = '#536471';
+      context.fillText('Collecting...', 12, 24);
+      return;
+    }}
+    context.strokeStyle = color;
+    context.lineWidth = 2;
+    context.beginPath();
+    points.forEach((value, idx) => {{
+      const x = points.length === 1 ? width - 1 : idx * (width - 1) / (points.length - 1);
+      const y = height - 1 - Math.max(0, Math.min(100, value)) * (height - 1) / 100;
+      if (idx === 0) {{
+        context.moveTo(x, y);
+      }} else {{
+        context.lineTo(x, y);
+      }}
+    }});
+    context.stroke();
+  }}
+
+  async function refreshCharts() {{
+    try {{
+      const response = await fetch('/api/status', {{ cache: 'no-store' }});
+      const appState = await response.json();
+      const history = appState.system_history || [];
+      drawChart(cpuChart, history.map((sample) => sample.cpu_used_percent), '#155c85');
+      drawChart(ramChart, history.map((sample) => sample.memory_used_percent), '#2e7d32');
+    }} catch (error) {{
+      drawChart(cpuChart, [], '#155c85');
+      drawChart(ramChart, [], '#2e7d32');
+    }}
+  }}
+
+  refreshCharts();
+  setInterval(refreshCharts, 5000);
+</script>
 </body>
 </html>
 """
@@ -634,6 +710,12 @@ def _value_text(value: int | None) -> str:
     if value is None:
         return "--"
     return str(value)
+
+
+def _percent_text(value: float | None) -> str:
+    if value is None:
+        return "--"
+    return f"{value:.1f}%"
 
 
 def _uptime_text(seconds: int | None) -> str:

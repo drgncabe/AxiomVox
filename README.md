@@ -9,7 +9,8 @@ loop, M2 adds local recording-session metadata and initial WAV capture, M3 adds
 WAV validation/audio confidence checks, and M4 adds settings, power, and
 brightness controls. M5 adds a searchable web log viewer for system and
 AxiomVox service logs. M6 adds appliance polish and PiSugar diagnostics. M7
-adds sound feedback and chime volume controls.
+adds sound feedback and chime volume controls. M8 improves recording stop
+responsiveness and adds CPU/RAM graphs.
 
 ## M0 Target
 
@@ -77,6 +78,7 @@ repository path.
 - [M5 Log Viewer](docs/m5-log-viewer.md)
 - [M6 Appliance Polish](docs/m6-appliance-polish.md)
 - [M7 Sound Feedback](docs/m7-sound-feedback.md)
+- [M8 Responsive Stop And Graphs](docs/m8-responsive-stop-and-graphs.md)
 - [AVTP/1 Protocol](docs/avtp-1.md)
 - [OS and Installation](docs/os-and-install.md)
 

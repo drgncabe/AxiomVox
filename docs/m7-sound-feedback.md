@@ -49,7 +49,6 @@ AXIOMVOX_CHIME_VOLUME
 
 ## Stop Lag Note
 
-Long-press stop currently waits for capture shutdown, WAV finalization, audio
-validation, and metadata write before the final READY screen is redrawn. If this
-still feels slow on hardware, the next pass should split stop into immediate UI
-acknowledgement plus background finalization.
+Long-press stop now acknowledges immediately, plays the stop chime, and shows a
+Stopping screen while WAV finalization, validation, and metadata writes complete
+in the background.

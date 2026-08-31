@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+from threading import Lock, Thread
 from uuid import uuid4
 from pathlib import Path
 
@@ -18,6 +19,7 @@ class SessionManager:
         self.config = config
         self.sound = sound
         self.capture_process: subprocess.Popen[bytes] | None = None
+        self._stop_lock = Lock()
 
     def load_recent(self, state: AppState, limit: int = 10) -> None:
         if not self.config.session_dir.exists():
@@ -65,6 +67,11 @@ class SessionManager:
         return state.status_message
 
     def bookmark(self, state: AppState) -> str:
+        if state.mode == "STOPPING":
+            state.status_message = "Stopping; please wait"
+            state.touch()
+            return state.status_message
+
         if state.current_session is None:
             return self.start(state)
 
@@ -83,21 +90,50 @@ class SessionManager:
             state.touch()
             return state.status_message
 
-        self._stop_capture()
         session = state.current_session
+        self._finalize_stop(state, session, play_chime=True)
+        return state.status_message
+
+    def stop_async(self, state: AppState) -> str:
+        if state.mode == "STOPPING":
+            state.status_message = "Stopping; please wait"
+            state.touch()
+            return state.status_message
+
+        if state.current_session is None:
+            return self.stop(state)
+
+        session = state.current_session
+        state.mode = "STOPPING"
+        state.active_screen = "stopping"
+        state.status_message = f"Stopping {session.id}"
+        if self.sound is not None:
+            self.sound.play("stop", state)
+        state.touch()
+
+        Thread(target=self._finalize_stop, args=(state, session, False), daemon=True).start()
+        return state.status_message
+
+    def _finalize_stop(self, state: AppState, session: SessionSummary, play_chime: bool) -> None:
+        with self._stop_lock:
+            self._stop_capture()
+            if state.current_session is not session and session in state.recent_sessions:
+                return
         session.status = "complete"
         session.ended_at = utc_now_iso()
         self.validate_session_audio(session)
         self._write_metadata(session)
-        state.recent_sessions.insert(0, session)
+        if session not in state.recent_sessions:
+            state.recent_sessions.insert(0, session)
         state.recent_sessions = state.recent_sessions[:10]
-        state.current_session = None
+        if state.current_session is session:
+            state.current_session = None
         state.mode = "READY"
+        state.active_screen = "ready"
         state.status_message = f"Saved {session.id}"
-        if self.sound is not None:
+        if play_chime and self.sound is not None:
             self.sound.play("stop", state)
         state.touch()
-        return state.status_message
 
     def validate_session_audio(self, session: SessionSummary) -> None:
         if session.audio_path is None:

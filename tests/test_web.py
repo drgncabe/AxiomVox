@@ -28,6 +28,9 @@ def test_dashboard_documents_future_sections_without_implementing_them() -> None
     assert "55%" in html
     assert "1m" in html
     assert "Brightness" in html
+    assert "System Graphs" in html
+    assert "cpuChart" in html
+    assert "ramChart" in html
     assert "/settings/display" in html
     assert "/settings/power" in html
     assert "/settings/sound" in html

@@ -1,5 +1,6 @@
 from pathlib import Path
 import json
+import time
 import wave
 
 from shared.axiomvox_shared import AppState
@@ -74,6 +75,35 @@ def test_session_manager_plays_start_and_stop_chimes(tmp_path: Path) -> None:
     manager.stop(state)
 
     assert sound.played == ["start", "stop"]
+
+
+def test_session_manager_async_stop_acknowledges_before_finalization(tmp_path: Path, monkeypatch) -> None:
+    state = AppState()
+    sound = FakeSound()
+    manager = SessionManager(DeviceConfig(session_dir=tmp_path, capture_enabled=False), sound)
+    manager.start(state)
+    manager.validate_session_audio = lambda session: time.sleep(0.1)
+
+    message = manager.stop_async(state)
+
+    assert message.startswith("Stopping ")
+    assert state.mode == "STOPPING"
+    assert state.active_screen == "stopping"
+    assert sound.played == ["start", "stop"]
+
+    deadline = time.time() + 1
+    while state.mode == "STOPPING" and time.time() < deadline:
+        time.sleep(0.01)
+
+    assert state.mode == "READY"
+    assert state.recent_sessions
+
+
+def test_session_manager_ignores_bookmark_while_stopping(tmp_path: Path) -> None:
+    state = AppState(mode="STOPPING")
+    manager = SessionManager(DeviceConfig(session_dir=tmp_path, capture_enabled=False))
+
+    assert manager.bookmark(state) == "Stopping; please wait"
 
 
 def test_session_manager_validates_saved_wav_and_loads_recent(tmp_path: Path) -> None:

@@ -33,3 +33,22 @@ def test_lcd_set_brightness_clamps_value(tmp_path) -> None:
 
     assert board.backlight == 100
     assert driver.backlight == 100
+
+
+class AlternateBacklightBoard:
+    def __init__(self) -> None:
+        self.brightness: int | None = None
+
+    def draw_image(self, x: int, y: int, width: int, height: int, image: bytes) -> None:
+        return
+
+
+def test_lcd_set_brightness_uses_alternate_runtime_attribute(tmp_path) -> None:
+    driver = WhisplayLcdDriver(runtime_path=tmp_path / "missing.py")
+    board = AlternateBacklightBoard()
+    driver.board = board
+
+    message = driver.set_brightness(40)
+
+    assert board.brightness == 40
+    assert "via brightness" in message

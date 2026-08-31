@@ -28,7 +28,7 @@ class ApplianceController:
                 state.status_message = "Whisplay short: start recording or bookmark"
         elif event.gesture == "long":
             if self.sessions is not None:
-                self.sessions.stop(state)
+                self.sessions.stop_async(state)
             else:
                 state.status_message = "Whisplay long: stop recording"
         elif event.gesture == "double":
@@ -38,7 +38,10 @@ class ApplianceController:
                 state.status_message = "Whisplay double: bookmark"
         else:
             state.status_message = f"Whisplay {event.gesture}: recording control"
-        state.active_screen = "recording" if state.current_session is not None else "ready"
+        if state.mode == "STOPPING":
+            state.active_screen = "stopping"
+        else:
+            state.active_screen = "recording" if state.current_session is not None else "ready"
 
     def _handle_pisugar(self, event: ButtonEvent, state: AppState) -> None:
         if event.gesture == "very_long" and state.active_screen in {"shutdown_confirm", "reboot_confirm"}:

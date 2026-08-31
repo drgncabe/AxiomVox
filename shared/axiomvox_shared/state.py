@@ -32,12 +32,21 @@ class HardwareStatus:
 @dataclass(slots=True)
 class SystemStats:
     uptime_seconds: int | None = None
+    cpu_used_percent: float | None = None
     load_1m: float | None = None
     load_5m: float | None = None
     load_15m: float | None = None
     memory_total_mb: int | None = None
     memory_available_mb: int | None = None
     memory_used_percent: float | None = None
+
+
+@dataclass(slots=True)
+class SystemSample:
+    timestamp: str
+    cpu_used_percent: float | None = None
+    memory_used_percent: float | None = None
+    load_1m: float | None = None
 
 
 @dataclass(slots=True)
@@ -68,6 +77,7 @@ class AppState:
     updated_at: str = field(default_factory=utc_now_iso)
     hardware: HardwareStatus = field(default_factory=HardwareStatus)
     system: SystemStats = field(default_factory=SystemStats)
+    system_history: list[SystemSample] = field(default_factory=list)
     web_reachable: bool = False
     active_screen: str = "ready"
     menu_items: list[str] = field(
@@ -101,6 +111,17 @@ class AppState:
         self.user_action_sequence += 1
         self.display_awake = True
         self.touch()
+
+    def record_system_sample(self, limit: int = 60) -> None:
+        self.system_history.append(
+            SystemSample(
+                timestamp=utc_now_iso(),
+                cpu_used_percent=self.system.cpu_used_percent,
+                memory_used_percent=self.system.memory_used_percent,
+                load_1m=self.system.load_1m,
+            )
+        )
+        self.system_history = self.system_history[-limit:]
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

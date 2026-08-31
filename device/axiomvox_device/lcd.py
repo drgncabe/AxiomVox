@@ -30,7 +30,7 @@ class WhisplayLcdDriver:
         try:
             self.backlight = self.DEFAULT_BACKLIGHT
             self.applied_backlight = None
-            self._ensure_backlight()
+            self.detail = self._ensure_backlight()
         except Exception as exc:
             self.detail = f"Whisplay backlight update failed: {exc}"
             return self.detail
@@ -39,8 +39,11 @@ class WhisplayLcdDriver:
     def set_brightness(self, brightness: int) -> str:
         self.backlight = max(0, min(100, brightness))
         self.applied_backlight = None
-        self._ensure_backlight()
-        return f"Whisplay backlight set to {self.backlight}"
+        try:
+            self.detail = self._ensure_backlight()
+        except Exception as exc:
+            self.detail = f"Whisplay backlight update failed: {exc}"
+        return self.detail
 
     def render(self, state: AppState) -> str:
         if self.board is None:
@@ -86,14 +89,35 @@ class WhisplayLcdDriver:
         except Exception as exc:
             self.detail = f"Whisplay runtime load failed: {exc}"
 
-    def _ensure_backlight(self) -> None:
+    def _ensure_backlight(self) -> str:
         if self.board is None or self.applied_backlight == self.backlight:
-            return
-        set_backlight = getattr(self.board, "set_backlight", None)
-        if callable(set_backlight):
-            set_backlight(self.backlight)
+            return f"Whisplay backlight already {self.backlight}"
+        result = self._apply_backlight()
+        if result:
             self.backlight_enabled = True
             self.applied_backlight = self.backlight
+            return result
+        return "Whisplay runtime loaded, but no supported backlight method was found"
+
+    def _apply_backlight(self) -> str:
+        method_names = [
+            "set_backlight",
+            "set_lcd_backlight",
+            "set_backlight_brightness",
+            "set_brightness",
+        ]
+        for method_name in method_names:
+            method = getattr(self.board, method_name, None)
+            if callable(method):
+                method(self.backlight)
+                return f"Whisplay backlight set to {self.backlight} via {method_name}"
+
+        attribute_names = ["backlight", "brightness", "lcd_backlight"]
+        for attribute_name in attribute_names:
+            if hasattr(self.board, attribute_name):
+                setattr(self.board, attribute_name, self.backlight)
+                return f"Whisplay backlight set to {self.backlight} via {attribute_name}"
+        return ""
 
     def _build_image(self, state: AppState) -> bytes:
         try:

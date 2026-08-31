@@ -117,6 +117,15 @@ class WhisplayRenderer:
                     "Long: back",
                 ]
             )
+        if state.active_screen == "stopping" or state.mode == "STOPPING":
+            return "\n".join(
+                [
+                    "AxiomVox STOP",
+                    "Stopping...",
+                    "Saving WAV",
+                    "Please wait",
+                ]
+            )
         if state.current_session is not None:
             return "\n".join(
                 [

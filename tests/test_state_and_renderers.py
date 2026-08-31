@@ -27,7 +27,13 @@ def test_whisplay_ready_screen_includes_m0_status() -> None:
 def test_hdmi_status_uses_shared_application_state() -> None:
     state = AppState(
         hardware=HardwareStatus(pisugar_detected=True),
-        system=SystemStats(uptime_seconds=3660, load_1m=0.25, memory_total_mb=512, memory_available_mb=256),
+        system=SystemStats(
+            uptime_seconds=3660,
+            cpu_used_percent=12.5,
+            load_1m=0.25,
+            memory_total_mb=512,
+            memory_available_mb=256,
+        ),
         brightness=60,
     )
 
@@ -72,6 +78,24 @@ def test_whisplay_sound_settings_screen_shows_volume() -> None:
     assert "SOUND" in rendered
     assert "Chimes off" in rendered
     assert "Volume 25%" in rendered
+
+
+def test_whisplay_stopping_screen_acknowledges_stop() -> None:
+    rendered = WhisplayRenderer().render(AppState(active_screen="stopping", mode="STOPPING"))
+
+    assert "AxiomVox STOP" in rendered
+    assert "Stopping..." in rendered
+
+
+def test_state_records_bounded_system_history() -> None:
+    state = AppState(system=SystemStats(cpu_used_percent=10.0, memory_used_percent=20.0, load_1m=0.5))
+
+    state.record_system_sample(limit=1)
+    state.system.cpu_used_percent = 30.0
+    state.record_system_sample(limit=1)
+
+    assert len(state.system_history) == 1
+    assert state.system_history[0].cpu_used_percent == 30.0
 
 
 def test_whisplay_logs_screen_points_to_web_console() -> None:

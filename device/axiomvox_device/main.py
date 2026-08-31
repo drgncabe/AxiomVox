@@ -88,6 +88,7 @@ def main(argv: list[str] | None = None) -> int:
 
     state.hardware = probe.collect()
     state.system = collect_system_stats()
+    state.record_system_sample()
     sessions.load_recent(state)
     state.touch()
 
@@ -133,6 +134,7 @@ def main(argv: list[str] | None = None) -> int:
 
             if now >= next_system_refresh:
                 state.system = collect_system_stats()
+                state.record_system_sample()
                 state.touch()
                 next_system_refresh = now + 5
 
