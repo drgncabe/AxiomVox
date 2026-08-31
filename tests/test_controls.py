@@ -90,6 +90,17 @@ def test_settings_menu_opens_logs_page() -> None:
     assert state.status_message == "Logs available on web"
 
 
+def test_settings_menu_opens_sound_settings_page() -> None:
+    state = AppState(active_screen="settings_menu", chime_volume=75)
+    state.settings_index = state.settings_items.index("Sound")
+
+    result = ApplianceController().select_settings_item(state)
+
+    assert result == "sound"
+    assert state.active_screen == "sound_settings"
+    assert state.status_message == "Chimes on at 75%"
+
+
 def test_settings_menu_opens_pisugar_diagnostics_page() -> None:
     state = AppState(active_screen="settings_menu")
     state.settings_index = state.settings_items.index("PiSugar")

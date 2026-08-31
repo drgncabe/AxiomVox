@@ -28,6 +28,7 @@ Settings menu:
 ```text
 Display
 Power
+Sound
 Logs
 PiSugar
 Back

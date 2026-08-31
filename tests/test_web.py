@@ -6,6 +6,7 @@ from device.axiomvox_device.web import (
     render_log_settings,
     render_pisugar_settings,
     render_power_settings,
+    render_sound_settings,
 )
 
 
@@ -29,6 +30,7 @@ def test_dashboard_documents_future_sections_without_implementing_them() -> None
     assert "Brightness" in html
     assert "/settings/display" in html
     assert "/settings/power" in html
+    assert "/settings/sound" in html
     assert "/settings/logs" in html
     assert "/settings/pisugar" in html
     assert "<span class=\"detail\">available</span>" in html
@@ -60,6 +62,17 @@ def test_log_settings_page_shows_search_and_watch_controls() -> None:
     assert "/api/logs" in html
     assert "Search" in html
     assert "Watch" in html
+
+
+def test_sound_settings_page_shows_chime_controls() -> None:
+    state = AppState(chime_volume=75, chimes_enabled=True)
+
+    html = render_sound_settings(state)
+
+    assert "Sound Settings" in html
+    assert "Current volume: 75%" in html
+    assert "Chimes enabled" in html
+    assert "Play test chime" in html
 
 
 def test_pisugar_settings_page_shows_diagnostics_and_log_link() -> None:

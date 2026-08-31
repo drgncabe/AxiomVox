@@ -18,6 +18,7 @@ from .events import ButtonEvent
 from .hardware import HardwareProbe
 from .logs import DEFAULT_LOG_LINES, LogReader, clamp_log_lines
 from .shutdown import ShutdownController
+from .sound import SoundFeedback, clamp_volume
 
 if TYPE_CHECKING:
     from .lcd import WhisplayLcdDriver
@@ -30,12 +31,14 @@ class StatusServer:
         config: DeviceConfig,
         controller: ApplianceController | None = None,
         lcd: WhisplayLcdDriver | None = None,
+        sound: SoundFeedback | None = None,
     ) -> None:
         self.state = state
         self.config = config
         self.shutdown = ShutdownController(config)
         self.controller = controller or ApplianceController()
         self.lcd = lcd
+        self.sound = sound or SoundFeedback(config)
         self.httpd = ThreadingHTTPServer((config.host, config.port), self._handler())
         self.thread = Thread(target=self.httpd.serve_forever, daemon=True)
 
@@ -56,6 +59,7 @@ class StatusServer:
         shutdown = self.shutdown
         controller = self.controller
         lcd = self.lcd
+        sound = self.sound
         log_reader = LogReader(config)
         hardware_probe = HardwareProbe(simulate=config.simulate_hardware)
 
@@ -101,6 +105,9 @@ class StatusServer:
                     return
                 if path == "/settings/power":
                     self._send_text(render_power_settings(state), HTTPStatus.OK, "text/html; charset=utf-8")
+                    return
+                if path == "/settings/sound":
+                    self._send_text(render_sound_settings(state), HTTPStatus.OK, "text/html; charset=utf-8")
                     return
                 if path == "/settings/logs":
                     self._send_text(render_log_settings(), HTTPStatus.OK, "text/html; charset=utf-8")
@@ -170,6 +177,30 @@ class StatusServer:
                         self._send_text(render_display_settings(state), HTTPStatus.OK, "text/html; charset=utf-8")
                         return
                     self._send_json({"ok": True, "timeout": state.display_sleep_timeout_seconds})
+                    return
+                if self.path in {"/api/sound", "/sound"}:
+                    try:
+                        volume = int(fields.get("volume", [str(state.chime_volume)])[0])
+                    except ValueError:
+                        self._send_json({"ok": False, "message": "invalid volume"}, HTTPStatus.BAD_REQUEST)
+                        return
+                    state.chime_volume = clamp_volume(volume)
+                    state.chimes_enabled = fields.get("chimes", ["off"])[0] == "on"
+                    state.status_message = sound.apply_state(state)
+                    if fields.get("test", [""])[0] == "1":
+                        state.status_message = sound.play("test", state)
+                    state.mark_user_action()
+                    if self.path == "/sound":
+                        self._send_text(render_sound_settings(state), HTTPStatus.OK, "text/html; charset=utf-8")
+                        return
+                    self._send_json(
+                        {
+                            "ok": True,
+                            "volume": state.chime_volume,
+                            "chimes_enabled": state.chimes_enabled,
+                            "message": state.status_message,
+                        }
+                    )
                     return
                 if self.path in {"/api/button", "/button"}:
                     source = fields.get("source", [""])[0]
@@ -335,6 +366,7 @@ def render_dashboard(state: AppState) -> str:
     <nav class="navlinks">
       <a href="/settings/display">Display settings</a>
       <a href="/settings/power">Power settings</a>
+      <a href="/settings/sound">Sound settings</a>
       <a href="/settings/logs">Logs</a>
       <a href="/settings/pisugar">PiSugar diagnostics</a>
     </nav>
@@ -397,6 +429,37 @@ def render_power_settings(state: AppState) -> str:
       <form method="post" action="/power"><input type="hidden" name="action" value="reboot"><button class="danger" type="submit">Reboot</button></form>
       <form method="post" action="/power"><input type="hidden" name="action" value="shutdown"><button class="danger" type="submit">Shutdown</button></form>
     </div>
+  </section>
+""",
+    )
+
+
+def render_sound_settings(state: AppState) -> str:
+    volume_buttons = "\n".join(
+        f"<form method=\"post\" action=\"/sound\"><input type=\"hidden\" name=\"volume\" value=\"{level}\">"
+        f"{_chime_hidden(state)}<button type=\"submit\">{level}%</button></form>"
+        for level in state.volume_levels
+    )
+    chime_checked = " checked" if state.chimes_enabled else ""
+    return _settings_page(
+        "Sound Settings",
+        f"""
+  <section class="panel">
+    <h2>Chimes</h2>
+    <p>Current volume: {state.chime_volume}%</p>
+    <p>{state.status_message}</p>
+    <form method="post" action="/sound">
+      <input type="hidden" name="volume" value="{state.chime_volume}">
+      <label class="watch"><input type="checkbox" name="chimes" value="on"{chime_checked}> Chimes enabled</label>
+      <button type="submit">Save</button>
+    </form>
+    <div class="actions">{volume_buttons}</div>
+    <form method="post" action="/sound">
+      <input type="hidden" name="volume" value="{state.chime_volume}">
+      {_chime_hidden(state)}
+      <input type="hidden" name="test" value="1">
+      <button type="submit">Play test chime</button>
+    </form>
   </section>
 """,
     )
@@ -538,6 +601,12 @@ def _session_file_path(session_dir: Path, request_path: str) -> Path | None:
     except ValueError:
         return None
     return candidate
+
+
+def _chime_hidden(state: AppState) -> str:
+    if not state.chimes_enabled:
+        return ""
+    return "<input type=\"hidden\" name=\"chimes\" value=\"on\">"
 
 
 def _int_query(query: dict[str, list[str]], name: str, default: int) -> int:

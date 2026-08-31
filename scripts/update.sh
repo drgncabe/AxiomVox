@@ -16,6 +16,9 @@ CAPTURE_DEVICE="${AXIOMVOX_CAPTURE_DEVICE:-plughw:whisplaysound,0}"
 CAPTURE_FORMAT="${AXIOMVOX_CAPTURE_FORMAT:-S32_LE}"
 CAPTURE_RATE="${AXIOMVOX_CAPTURE_RATE:-48000}"
 CAPTURE_CHANNELS="${AXIOMVOX_CAPTURE_CHANNELS:-2}"
+PLAYBACK_DEVICE="${AXIOMVOX_PLAYBACK_DEVICE:-default}"
+MIXER_CONTROL="${AXIOMVOX_MIXER_CONTROL:-PCM}"
+CHIME_VOLUME="${AXIOMVOX_CHIME_VOLUME:-60}"
 DISPLAY_SLEEP_TIMEOUT="${AXIOMVOX_DISPLAY_SLEEP_TIMEOUT:-300}"
 
 require_root() {
@@ -85,6 +88,9 @@ install_service() {
     -e "s|--capture-format S32_LE|--capture-format ${CAPTURE_FORMAT}|g" \
     -e "s|--capture-rate 48000|--capture-rate ${CAPTURE_RATE}|g" \
     -e "s|--capture-channels 2|--capture-channels ${CAPTURE_CHANNELS}|g" \
+    -e "s|--playback-device default|--playback-device ${PLAYBACK_DEVICE}|g" \
+    -e "s|--mixer-control PCM|--mixer-control ${MIXER_CONTROL}|g" \
+    -e "s|--chime-volume 60|--chime-volume ${CHIME_VOLUME}|g" \
     -e "s|--display-sleep-timeout 300|--display-sleep-timeout ${DISPLAY_SLEEP_TIMEOUT}|g" \
     -e "s|User=pi|User=${APP_USER}|g" \
     -e "s|Group=pi|Group=${APP_GROUP}|g" \

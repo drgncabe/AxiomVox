@@ -39,6 +39,15 @@ class FakeCaptureProcess:
         return 0
 
 
+class FakeSound:
+    def __init__(self) -> None:
+        self.played = []
+
+    def play(self, name: str, state: AppState) -> str:
+        self.played.append(name)
+        return f"played {name}"
+
+
 def test_session_manager_preserves_arecord_capture_mode_after_stop(tmp_path: Path, monkeypatch) -> None:
     state = AppState()
     manager = SessionManager(DeviceConfig(session_dir=tmp_path, capture_enabled=True))
@@ -54,6 +63,17 @@ def test_session_manager_preserves_arecord_capture_mode_after_stop(tmp_path: Pat
     assert process.terminated
     assert session.audio_capture == "arecord"
     assert metadata["audio_capture"] == "arecord"
+
+
+def test_session_manager_plays_start_and_stop_chimes(tmp_path: Path) -> None:
+    state = AppState()
+    sound = FakeSound()
+    manager = SessionManager(DeviceConfig(session_dir=tmp_path, capture_enabled=False), sound)
+
+    manager.start(state)
+    manager.stop(state)
+
+    assert sound.played == ["start", "stop"]
 
 
 def test_session_manager_validates_saved_wav_and_loads_recent(tmp_path: Path) -> None:

@@ -20,3 +20,7 @@ class DeviceConfig:
     capture_format: str = "S32_LE"
     capture_rate: int = 48000
     capture_channels: int = 2
+    playback_device: str = "default"
+    mixer_control: str = "PCM"
+    chimes_enabled: bool = True
+    chime_volume: int = 60

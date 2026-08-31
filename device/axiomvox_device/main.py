@@ -18,6 +18,7 @@ from .hardware import HardwareProbe
 from .lcd import WhisplayLcdDriver
 from .sessions import SessionManager
 from .shutdown import ShutdownController
+from .sound import SoundFeedback
 from .system_stats import collect_system_stats
 from .web import StatusServer
 
@@ -41,6 +42,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--capture-format", default="S32_LE")
     parser.add_argument("--capture-rate", type=int, default=48000)
     parser.add_argument("--capture-channels", type=int, default=2)
+    parser.add_argument("--playback-device", default="default")
+    parser.add_argument("--mixer-control", default="PCM")
+    parser.add_argument("--no-chimes", action="store_true")
+    parser.add_argument("--chime-volume", type=int, default=60)
     parser.add_argument("--display-sleep-timeout", type=int, default=300)
     return parser
 
@@ -60,11 +65,19 @@ def main(argv: list[str] | None = None) -> int:
         capture_format=args.capture_format,
         capture_rate=args.capture_rate,
         capture_channels=args.capture_channels,
+        playback_device=args.playback_device,
+        mixer_control=args.mixer_control,
+        chimes_enabled=not args.no_chimes,
+        chime_volume=args.chime_volume,
     )
     state = AppState()
     state.display_sleep_timeout_seconds = max(0, args.display_sleep_timeout)
+    state.chimes_enabled = config.chimes_enabled
+    state.chime_volume = max(0, min(100, config.chime_volume))
     probe = HardwareProbe(simulate=config.simulate_hardware)
-    sessions = SessionManager(config)
+    sound = SoundFeedback(config)
+    sound.apply_state(state)
+    sessions = SessionManager(config, sound)
     power = ShutdownController(config)
     controller = ApplianceController(sessions)
     whisplay = WhisplayRenderer()
@@ -94,7 +107,7 @@ def main(argv: list[str] | None = None) -> int:
         _publish_status(state, whisplay, hdmi, lcd, config.status_file)
         return 0
 
-    server = StatusServer(state, config, controller, lcd)
+    server = StatusServer(state, config, controller, lcd, sound)
     stop = False
 
     def request_stop(signum: int, frame: object) -> None:

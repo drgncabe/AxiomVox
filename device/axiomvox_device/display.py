@@ -90,6 +90,15 @@ class WhisplayRenderer:
                     "Short: light",
                 ]
             )
+        if state.active_screen == "sound_settings":
+            return "\n".join(
+                [
+                    "SOUND",
+                    f"Chimes {'on' if state.chimes_enabled else 'off'}",
+                    f"Volume {state.chime_volume}%",
+                    "Use web console",
+                ]
+            )
         if state.active_screen == "shutdown_confirm":
             return "\n".join(
                 [

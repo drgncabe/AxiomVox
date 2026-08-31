@@ -64,6 +64,16 @@ def test_whisplay_display_settings_screen_shows_sleep_timeout() -> None:
     assert "Sleep 30s" in rendered
 
 
+def test_whisplay_sound_settings_screen_shows_volume() -> None:
+    state = AppState(active_screen="sound_settings", chimes_enabled=False, chime_volume=25)
+
+    rendered = WhisplayRenderer().render(state)
+
+    assert "SOUND" in rendered
+    assert "Chimes off" in rendered
+    assert "Volume 25%" in rendered
+
+
 def test_whisplay_logs_screen_points_to_web_console() -> None:
     rendered = WhisplayRenderer().render(AppState(active_screen="logs"))
 

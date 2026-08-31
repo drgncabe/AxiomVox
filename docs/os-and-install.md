@@ -95,6 +95,9 @@ The scripts can be adjusted with environment variables:
 | `AXIOMVOX_SERVICE_NAME` | `axiomvox.service` |
 | `AXIOMVOX_WEB_PORT` | `8080` |
 | `AXIOMVOX_STATUS_FILE` | `/run/axiomvox/status.json` |
+| `AXIOMVOX_PLAYBACK_DEVICE` | `default` |
+| `AXIOMVOX_MIXER_CONTROL` | `PCM` |
+| `AXIOMVOX_CHIME_VOLUME` | `60` |
 | `AXIOMVOX_INSTALL_HARDWARE` | `1` |
 | `AXIOMVOX_INSTALL_WHISPLAY_DRIVER` | `1` |
 | `AXIOMVOX_INSTALL_WHISPLAY_DAEMON` | `0` |

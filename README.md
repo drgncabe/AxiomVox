@@ -8,7 +8,8 @@ expose a small local web dashboard with graceful shutdown. M1 adds the appliance
 loop, M2 adds local recording-session metadata and initial WAV capture, M3 adds
 WAV validation/audio confidence checks, and M4 adds settings, power, and
 brightness controls. M5 adds a searchable web log viewer for system and
-AxiomVox service logs. M6 adds appliance polish and PiSugar diagnostics.
+AxiomVox service logs. M6 adds appliance polish and PiSugar diagnostics. M7
+adds sound feedback and chime volume controls.
 
 ## M0 Target
 
@@ -75,6 +76,7 @@ repository path.
 - [M4 Settings And Power](docs/m4-settings-power.md)
 - [M5 Log Viewer](docs/m5-log-viewer.md)
 - [M6 Appliance Polish](docs/m6-appliance-polish.md)
+- [M7 Sound Feedback](docs/m7-sound-feedback.md)
 - [AVTP/1 Protocol](docs/avtp-1.md)
 - [OS and Installation](docs/os-and-install.md)
 

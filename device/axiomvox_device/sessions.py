@@ -10,11 +10,13 @@ from shared.axiomvox_shared import AppState, SessionSummary, utc_now_iso
 
 from .audio import validate_wav
 from .config import DeviceConfig
+from .sound import SoundFeedback
 
 
 class SessionManager:
-    def __init__(self, config: DeviceConfig) -> None:
+    def __init__(self, config: DeviceConfig, sound: SoundFeedback | None = None) -> None:
         self.config = config
+        self.sound = sound
         self.capture_process: subprocess.Popen[bytes] | None = None
 
     def load_recent(self, state: AppState, limit: int = 10) -> None:
@@ -53,6 +55,8 @@ class SessionManager:
         state.current_session = session
         state.mode = "RECORDING"
         state.status_message = f"Recording {session_id}"
+        if self.sound is not None:
+            self.sound.play("start", state)
         session.audio_capture_command = self._capture_command(audio_path)
         self._start_capture(session.audio_capture_command)
         session.audio_capture = self._capture_note()
@@ -90,6 +94,8 @@ class SessionManager:
         state.current_session = None
         state.mode = "READY"
         state.status_message = f"Saved {session.id}"
+        if self.sound is not None:
+            self.sound.play("stop", state)
         state.touch()
         return state.status_message
 
