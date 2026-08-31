@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+from html import escape
+from dataclasses import asdict
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -8,11 +10,12 @@ from threading import Thread
 from typing import TYPE_CHECKING
 from urllib.parse import parse_qs, unquote, urlparse
 
-from shared.axiomvox_shared import AppState
+from shared.axiomvox_shared import AppState, ServiceStatus
 
 from .config import DeviceConfig
 from .controls import ApplianceController
 from .events import ButtonEvent
+from .hardware import HardwareProbe
 from .logs import DEFAULT_LOG_LINES, LogReader, clamp_log_lines
 from .shutdown import ShutdownController
 
@@ -54,6 +57,7 @@ class StatusServer:
         controller = self.controller
         lcd = self.lcd
         log_reader = LogReader(config)
+        hardware_probe = HardwareProbe(simulate=config.simulate_hardware)
 
         class Handler(BaseHTTPRequestHandler):
             def do_GET(self) -> None:
@@ -86,6 +90,9 @@ class StatusServer:
                         ).to_dict()
                     )
                     return
+                if path == "/api/pisugar":
+                    self._send_json({"diagnostics": [asdict(item) for item in hardware_probe.pisugar_diagnostics()]})
+                    return
                 if path.startswith("/sessions/"):
                     self._send_session_file()
                     return
@@ -97,6 +104,13 @@ class StatusServer:
                     return
                 if path == "/settings/logs":
                     self._send_text(render_log_settings(), HTTPStatus.OK, "text/html; charset=utf-8")
+                    return
+                if path == "/settings/pisugar":
+                    self._send_text(
+                        render_pisugar_settings(hardware_probe.pisugar_diagnostics()),
+                        HTTPStatus.OK,
+                        "text/html; charset=utf-8",
+                    )
                     return
                 if path == "/":
                     self._send_text(render_dashboard(state), HTTPStatus.OK, "text/html; charset=utf-8")
@@ -322,6 +336,7 @@ def render_dashboard(state: AppState) -> str:
       <a href="/settings/display">Display settings</a>
       <a href="/settings/power">Power settings</a>
       <a href="/settings/logs">Logs</a>
+      <a href="/settings/pisugar">PiSugar diagnostics</a>
     </nav>
   </section>
   <section class="panel">
@@ -454,6 +469,26 @@ def render_log_settings() -> str:
     }}, 2000);
     loadLogs();
   </script>
+""",
+    )
+
+
+def render_pisugar_settings(diagnostics: list[ServiceStatus]) -> str:
+    rows = "\n".join(
+        f"<li><strong>{escape(item.name)}</strong>: {'OK' if item.ok else 'Check'}"
+        f"<span class=\"detail\">{escape(item.detail)}</span></li>"
+        for item in diagnostics
+    )
+    if not rows:
+        rows = "<li>No PiSugar diagnostics available.</li>"
+    return _settings_page(
+        "PiSugar Diagnostics",
+        f"""
+  <section class="panel">
+    <ul>{rows}</ul>
+    <p>Use Logs with search text <strong>pisugar</strong> for the running service output.</p>
+    <nav><a href="/settings/logs">Open logs</a></nav>
+  </section>
 """,
     )
 

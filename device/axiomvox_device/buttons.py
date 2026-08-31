@@ -33,7 +33,7 @@ class PiSugarButtonPoller(ButtonPoller):
 
 
 class WhisplayButtonPoller(ButtonPoller):
-    LONG_PRESS_SECONDS = 1.2
+    LONG_PRESS_SECONDS = 0.8
     DOUBLE_PRESS_SECONDS = 0.45
 
     def __init__(self, probe: HardwareProbe, board: Any = None) -> None:

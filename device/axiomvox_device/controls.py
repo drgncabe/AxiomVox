@@ -25,19 +25,19 @@ class ApplianceController:
             if self.sessions is not None:
                 self.sessions.bookmark(state)
             else:
-                state.status_message = "Recording control reserved: start/bookmark"
+                state.status_message = "Whisplay short: start recording or bookmark"
         elif event.gesture == "long":
             if self.sessions is not None:
                 self.sessions.stop(state)
             else:
-                state.status_message = "Recording control reserved: stop"
+                state.status_message = "Whisplay long: stop recording"
         elif event.gesture == "double":
             if self.sessions is not None:
                 self.sessions.bookmark(state)
             else:
-                state.status_message = "Recording control reserved: bookmark"
+                state.status_message = "Whisplay double: bookmark"
         else:
-            state.status_message = f"Recording control reserved: {event.gesture}"
+            state.status_message = f"Whisplay {event.gesture}: recording control"
         state.active_screen = "recording" if state.current_session is not None else "ready"
 
     def _handle_pisugar(self, event: ButtonEvent, state: AppState) -> None:
@@ -60,7 +60,7 @@ class ApplianceController:
     def advance_menu(self, state: AppState) -> None:
         if state.active_screen in {"shutdown_confirm", "reboot_confirm"}:
             state.active_screen = "menu"
-            state.status_message = "Menu"
+            state.status_message = "Back to menu"
             return
         if state.active_screen == "settings_menu":
             state.settings_index = (state.settings_index + 1) % len(state.settings_items)
@@ -87,11 +87,15 @@ class ApplianceController:
             return
         if state.active_screen == "display_settings":
             state.active_screen = "settings_menu"
-            state.status_message = "Menu"
+            state.status_message = "Back to settings"
             return
         if state.active_screen in {"status", "settings", "sessions", "logs", "reboot_confirm", "shutdown_confirm"}:
             state.active_screen = "menu"
-            state.status_message = "Menu"
+            state.status_message = "Back to menu"
+            return
+        if state.active_screen == "pisugar_diagnostics":
+            state.active_screen = "settings_menu"
+            state.status_message = "Back to settings"
             return
 
         item = state.menu_items[state.menu_index]
@@ -119,7 +123,7 @@ class ApplianceController:
         item = state.settings_items[state.settings_index]
         if item == "Back":
             state.active_screen = "menu"
-            state.status_message = "Menu"
+            state.status_message = "Back to menu"
             return "back"
         if item == "Display":
             state.active_screen = "display_settings"
@@ -134,6 +138,10 @@ class ApplianceController:
             state.active_screen = "logs"
             state.status_message = "Logs available on web"
             return "logs"
+        if item == "PiSugar":
+            state.active_screen = "pisugar_diagnostics"
+            state.status_message = "PiSugar diagnostics available on web"
+            return "pisugar"
         return "unknown"
 
     def select_power_item(self, state: AppState) -> str:

@@ -62,6 +62,15 @@ class WhisplayRenderer:
                     "Long: back",
                 ]
             )
+        if state.active_screen == "pisugar_diagnostics":
+            return "\n".join(
+                [
+                    "PISUGAR DIAG",
+                    "Use web console",
+                    "/settings/pisugar",
+                    "Long: back",
+                ]
+            )
         if state.active_screen == "power":
             selected = state.power_items[state.power_index]
             return "\n".join(

@@ -4,6 +4,7 @@ from device.axiomvox_device.web import (
     render_dashboard,
     render_display_settings,
     render_log_settings,
+    render_pisugar_settings,
     render_power_settings,
 )
 
@@ -29,6 +30,7 @@ def test_dashboard_documents_future_sections_without_implementing_them() -> None
     assert "/settings/display" in html
     assert "/settings/power" in html
     assert "/settings/logs" in html
+    assert "/settings/pisugar" in html
     assert "<span class=\"detail\">available</span>" in html
 
 
@@ -58,6 +60,15 @@ def test_log_settings_page_shows_search_and_watch_controls() -> None:
     assert "/api/logs" in html
     assert "Search" in html
     assert "Watch" in html
+
+
+def test_pisugar_settings_page_shows_diagnostics_and_log_link() -> None:
+    html = render_pisugar_settings([ServiceStatus("pisugar_service", False, "status: failed")])
+
+    assert "PiSugar Diagnostics" in html
+    assert "pisugar_service" in html
+    assert "status: failed" in html
+    assert "/settings/logs" in html
 
 
 def test_dashboard_shows_active_and_recent_sessions() -> None:

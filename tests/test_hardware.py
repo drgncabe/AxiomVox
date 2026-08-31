@@ -68,3 +68,37 @@ def test_pisugar_button_detects_readable_i2c_register() -> None:
 
     assert result.ok is True
     assert "custom_register:0x00" in result.detail
+
+
+def test_pisugar_diagnostics_collects_service_api_and_i2c_details() -> None:
+    probe = HardwareProbe()
+
+    def fake_query(command: str) -> str | None:
+        responses = {
+            "get model": "model: PiSugar 3",
+            "get battery": "battery: 74.6",
+            "get button": "button: short",
+            "get button_enable single": "button_enable: single true",
+        }
+        return responses.get(command)
+
+    probe._query_pisugar = fake_query
+    probe._systemctl_is_active = lambda service: type("Result", (), {
+        "ok": True,
+        "detail": "pisugar-server status: active",
+    })()
+    probe._read_i2c_byte = lambda address, register: 74 if (address, register) == (0x57, 0x2A) else None
+
+    diagnostics = probe.pisugar_diagnostics()
+
+    assert [item.name for item in diagnostics] == [
+        "pisugar_service",
+        "pisugar_api",
+        "pisugar_model",
+        "pisugar_battery",
+        "pisugar_button",
+        "pisugar_i2c",
+    ]
+    assert diagnostics[0].ok is True
+    assert diagnostics[2].detail == "PiSugar 3"
+    assert "single" in diagnostics[4].detail

@@ -39,7 +39,7 @@ def test_whisplay_button_poller_uses_runtime_callbacks(monkeypatch) -> None:
 
 def test_whisplay_button_poller_maps_long_press(monkeypatch) -> None:
     board = FakeWhisplayBoard()
-    times = iter([10.0, 12.0])
+    times = iter([10.0, 10.85])
     monkeypatch.setattr("device.axiomvox_device.buttons.time.monotonic", lambda: next(times))
 
     poller = WhisplayButtonPoller(probe=None, board=board)
@@ -49,3 +49,4 @@ def test_whisplay_button_poller_maps_long_press(monkeypatch) -> None:
     events = tuple(poller.poll())
 
     assert events[0].gesture == "long"
+    assert WhisplayButtonPoller.LONG_PRESS_SECONDS == 0.8

@@ -65,6 +65,67 @@ class HardwareProbe:
             ],
         )
 
+    def pisugar_diagnostics(self) -> list[ServiceStatus]:
+        if self.simulate:
+            return [
+                ServiceStatus("pisugar_service", True, "simulated active"),
+                ServiceStatus("pisugar_model", True, "PiSugar 3"),
+                ServiceStatus("pisugar_battery", True, "87%"),
+                ServiceStatus("pisugar_button", True, "simulated button API"),
+                ServiceStatus("pisugar_i2c", True, "simulated 0x57 response"),
+            ]
+
+        service = self._systemctl_is_active("pisugar-server")
+        model = self._query_pisugar("get model")
+        battery = self._query_pisugar("get battery")
+        button_state = self.read_pisugar_button_state()
+        button_single = self._query_pisugar("get button_enable single")
+        button_double = self._query_pisugar("get button_enable double")
+        button_long = self._query_pisugar("get button_enable long")
+        battery_register = self._read_i2c_byte(0x57, 0x2A)
+        button_register = self._read_i2c_byte(0x57, 0x08)
+
+        button_parts = [
+            _detail_value("state", button_state),
+            _detail_value("single", button_single),
+            _detail_value("double", button_double),
+            _detail_value("long", button_long),
+        ]
+        readable_buttons = [part for part in button_parts if part]
+        i2c_parts = [
+            _hex_detail("battery_register", battery_register),
+            _hex_detail("button_register", button_register),
+        ]
+
+        return [
+            ServiceStatus("pisugar_service", service.ok, service.detail),
+            ServiceStatus(
+                "pisugar_api",
+                any([model, battery, button_state, button_single, button_double, button_long]),
+                "PiSugar API responded" if any([model, battery, button_state, button_single, button_double, button_long]) else "PiSugar API did not respond",
+            ),
+            ServiceStatus(
+                "pisugar_model",
+                model is not None,
+                self._parse_pisugar_value(model) if model else "model not readable",
+            ),
+            ServiceStatus(
+                "pisugar_battery",
+                battery is not None or battery_register is not None,
+                self._parse_pisugar_value(battery) if battery else _register_detail(battery_register),
+            ),
+            ServiceStatus(
+                "pisugar_button",
+                bool(readable_buttons) or button_register is not None,
+                ", ".join(readable_buttons) if readable_buttons else _register_detail(button_register),
+            ),
+            ServiceStatus(
+                "pisugar_i2c",
+                battery_register is not None or button_register is not None,
+                ", ".join(part for part in i2c_parts if part) or "0x57 registers not readable",
+            ),
+        ]
+
     def _probe_whisplay(self) -> ProbeResult:
         i2c_devices = Path("/sys/bus/i2c/devices")
         if i2c_devices.exists() and any(i2c_devices.iterdir()):
@@ -310,3 +371,21 @@ class HardwareProbe:
             if status.read_text(errors="ignore").strip().lower() == "connected":
                 return ProbeResult(True, f"{status.parent.name} connected")
         return ProbeResult(False, "No connected HDMI status found")
+
+
+def _detail_value(label: str, value: str | None) -> str:
+    if not value:
+        return ""
+    return f"{label}={value.strip()}"
+
+
+def _hex_detail(label: str, value: int | None) -> str:
+    if value is None:
+        return ""
+    return f"{label}=0x{value:02x}"
+
+
+def _register_detail(value: int | None) -> str:
+    if value is None:
+        return "not readable"
+    return f"I2C register readable: 0x{value:02x}"

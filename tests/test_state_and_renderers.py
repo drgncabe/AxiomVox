@@ -69,3 +69,10 @@ def test_whisplay_logs_screen_points_to_web_console() -> None:
 
     assert "AxiomVox LOGS" in rendered
     assert "/settings/logs" in rendered
+
+
+def test_whisplay_pisugar_screen_points_to_web_console() -> None:
+    rendered = WhisplayRenderer().render(AppState(active_screen="pisugar_diagnostics"))
+
+    assert "PISUGAR DIAG" in rendered
+    assert "/settings/pisugar" in rendered

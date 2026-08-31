@@ -29,6 +29,7 @@ Settings menu:
 Display
 Power
 Logs
+PiSugar
 Back
 ```
 
@@ -89,5 +90,5 @@ disable automatic screen sleep at startup.
 
 ## Known Follow-Up
 
-Long-click recognition can feel laggy on hardware. A future input-tuning pass
-should reduce perceived delay without making accidental long presses too easy.
+Long-click recognition has been shortened on the Whisplay button to reduce
+perceived delay while keeping long presses deliberate.
