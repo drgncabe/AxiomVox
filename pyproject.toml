@@ -12,6 +12,11 @@ license = { text = "AGPL-3.0-only" }
 authors = [{ name = "AxiomVox contributors" }]
 dependencies = []
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=9,<10",
+]
+
 [project.scripts]
 axiomvox-device = "device.axiomvox_device.main:main"
 

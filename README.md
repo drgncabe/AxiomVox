@@ -56,7 +56,7 @@ For manual development:
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
-python -m pip install -e .
+python -m pip install -e ".[dev]"
 axiomvox-device --host 0.0.0.0 --port 8080
 ```
 

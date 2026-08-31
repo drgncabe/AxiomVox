@@ -20,7 +20,7 @@ def test_whisplay_button_is_reserved_for_recording_controls() -> None:
 
     assert state.active_screen == "ready"
     assert state.last_button_event == "whisplay:short"
-    assert "Recording control reserved" in state.status_message
+    assert state.status_message == "Whisplay short: start recording or bookmark"
 
 
 def test_whisplay_button_delegates_to_session_manager_when_available() -> None:
